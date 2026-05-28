@@ -632,6 +632,41 @@
   }
   .cred-ok:hover { background: var(--cyan); color: var(--bg); }
 
+  /* ── EXPORT MODAL ── */
+  .exp-overlay {
+    display: none; position: fixed; inset: 0;
+    background: rgba(0,0,0,0.8); z-index: 400;
+    align-items: center; justify-content: center;
+  }
+  .exp-overlay.on { display: flex; }
+  .exp-modal {
+    background: var(--bg2); border: 1px solid var(--br2);
+    width: 380px; max-width: 92vw; max-height: 80vh;
+    display: flex; flex-direction: column;
+  }
+  .exp-head {
+    padding: 10px 14px; border-bottom: 1px solid var(--br);
+    display: flex; align-items: center; justify-content: space-between; flex-shrink: 0;
+  }
+  .exp-title { font-size: 11px; letter-spacing: 0.1em; color: var(--cyan); text-transform: uppercase; }
+  .exp-body { flex: 1; overflow-y: auto; padding: 4px 0; }
+  .exp-section { padding: 8px 14px; border-bottom: 1px solid var(--br); display: flex; flex-direction: column; gap: 5px; }
+  .exp-section:last-child { border-bottom: none; }
+  .exp-row { display: flex; align-items: center; gap: 8px; cursor: pointer; }
+  .exp-row:hover .exp-lbl { color: var(--fg); }
+  .exp-sub1 { padding-left: 20px; }
+  .exp-sub2 { padding-left: 36px; }
+  .exp-check { width: 13px; height: 13px; border: 1px solid var(--br2); background: transparent; flex-shrink: 0; cursor: pointer; appearance: none; -webkit-appearance: none; transition: all 0.1s; }
+  .exp-check:checked { background: var(--cyan); border-color: var(--cyan); }
+  .exp-check:disabled { opacity: 0.3; cursor: default; }
+  .exp-lbl { font-size: 11px; color: var(--fg2); transition: color 0.1s; user-select: none; }
+  .exp-lbl.pg { color: var(--yellow); }
+  .exp-lbl.dim { color: var(--fg3); font-size: 10px; letter-spacing: 0.05em; }
+  .exp-foot {
+    padding: 10px 14px; border-top: 1px solid var(--br);
+    display: flex; justify-content: space-between; align-items: center; flex-shrink: 0;
+  }
+
   /* ── DROP OVERLAY ── */
   .drop-overlay {
     display: none; position: fixed; inset: 0;
@@ -765,6 +800,20 @@
   </div>
 </div>
 
+<div class="exp-overlay" id="exp-overlay">
+  <div class="exp-modal">
+    <div class="exp-head">
+      <span class="exp-title">export config</span>
+      <button class="s-close" onclick="closeExportModal()">✕</button>
+    </div>
+    <div class="exp-body" id="exp-body"></div>
+    <div class="exp-foot">
+      <button class="opts-cancel" onclick="closeExportModal()">cancel</button>
+      <button class="opts-ok" onclick="doExport()">export .stt</button>
+    </div>
+  </div>
+</div>
+
 <div id="hb-toast"></div>
 
 <div class="s-overlay" id="s-overlay" onclick="closeSettings()"></div>
@@ -827,8 +876,8 @@
 
   <div class="s-foot">
     <div class="s-backup-row">
-      <button class="s-reset-btn" onclick="exportConfig()">export</button>
-      <label class="s-reset-btn s-import-label">import<input type="file" accept=".json" style="display:none" onchange="importConfig(this)"></label>
+      <button class="s-reset-btn" onclick="openExportModal()">export</button>
+      <label class="s-reset-btn s-import-label">import<input type="file" accept=".json,.stt" style="display:none" onchange="importConfig(this)"></label>
     </div>
   </div>
 </div>
@@ -2474,14 +2523,97 @@ function renderSearchSection() {
 }
 
 // ── CONFIG EXPORT / IMPORT ────────────────────────────────────
-function exportConfig() {
+function openExportModal() {
+  const body = document.getElementById('exp-body');
+  body.innerHTML = '';
+
+  // Global options section
+  const globals = document.createElement('div');
+  globals.className = 'exp-section';
+  globals.appendChild(expRowEl('exp-g-search', 'search settings', true, ''));
+  globals.appendChild(expRowEl('exp-g-themes', 'custom themes', true, ''));
+  body.appendChild(globals);
+
+  // One section per page
+  cfg.pages.forEach(pg => {
+    const sec = document.createElement('div');
+    sec.className = 'exp-section';
+
+    // Page header
+    const pgRow = expRowEl(`exp-pg-${pg.id}`, pg.name + '/', true, '', true);
+    sec.appendChild(pgRow);
+
+    // Colors sub-row
+    sec.appendChild(expRowEl(`exp-pg-${pg.id}-colors`, 'colors', true, 'exp-sub1'));
+
+    // Trees sub-rows
+    if (pg.trees.length) {
+      const treesHdr = document.createElement('div');
+      treesHdr.className = 'exp-row exp-sub1';
+      treesHdr.innerHTML = `<span class="exp-lbl dim">trees</span>`;
+      sec.appendChild(treesHdr);
+      pg.trees.forEach(tree => {
+        const row = expRowEl(`exp-tree-${pg.id}-${tree.id}`, tree.name + '/', true, 'exp-sub2');
+        sec.appendChild(row);
+      });
+    }
+
+    // When page checkbox toggled, enable/disable its children
+    const pgCb = pgRow.querySelector('input');
+    pgCb.addEventListener('change', () => {
+      sec.querySelectorAll('input[type=checkbox]').forEach(cb => {
+        if (cb !== pgCb) { cb.disabled = !pgCb.checked; cb.checked = pgCb.checked; }
+      });
+    });
+
+    body.appendChild(sec);
+  });
+
+  document.getElementById('exp-overlay').classList.add('on');
+}
+
+function expRowEl(id, label, checked, extraClass, isPageHdr) {
+  const row = document.createElement('div');
+  row.className = 'exp-row' + (extraClass ? ' ' + extraClass : '');
+  const cb = document.createElement('input');
+  cb.type = 'checkbox'; cb.id = id; cb.className = 'exp-check'; cb.checked = checked;
+  const lbl = document.createElement('label');
+  lbl.htmlFor = id;
+  lbl.className = 'exp-lbl' + (isPageHdr ? ' pg' : '');
+  lbl.textContent = label;
+  row.appendChild(cb); row.appendChild(lbl);
+  return row;
+}
+
+function closeExportModal() {
+  document.getElementById('exp-overlay').classList.remove('on');
+}
+
+function doExport() {
+  const out = { _stt: '1' };
+
+  if (document.getElementById('exp-g-search')?.checked) out.search = deep(cfg.search);
+  if (document.getElementById('exp-g-themes')?.checked) out.customThemes = deep(cfg.customThemes);
+
+  out.pages = [];
+  cfg.pages.forEach(pg => {
+    if (!document.getElementById(`exp-pg-${pg.id}`)?.checked) return;
+    const page = { id: pg.id, name: pg.name, theme: pg.theme, grid: deep(pg.grid) };
+    if (document.getElementById(`exp-pg-${pg.id}-colors`)?.checked) page.colors = deep(pg.colors);
+    page.trees = deep(pg.trees.filter(t => document.getElementById(`exp-tree-${pg.id}-${t.id}`)?.checked));
+    out.pages.push(page);
+  });
+  out.activePage = 0;
+
   const date = new Date().toISOString().slice(0, 10);
-  const blob = new Blob([JSON.stringify(cfg, null, 2)], { type: 'application/json' });
+  const blob = new Blob([JSON.stringify(out, null, 2)], { type: 'application/octet-stream' });
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
-  a.download = `homebase-${date}.json`;
+  a.download = `homebase-${date}.stt`;
   a.click();
   URL.revokeObjectURL(a.href);
+  closeExportModal();
+  showToast('exported .stt');
 }
 
 function importConfig(input) {
@@ -2493,12 +2625,22 @@ function importConfig(input) {
     try {
       const data = JSON.parse(reader.result);
       if (!data.pages) { showToast('invalid backup file'); return; }
-      localStorage.setItem(STORE, reader.result);
-      cfg = load();
+      const isStt = !!data._stt;
+      if (isStt) {
+        // merge: add missing pages, apply search/themes if present
+        if (data.search) cfg.search = data.search;
+        if (data.customThemes) cfg.customThemes = data.customThemes;
+        const existingIds = new Set(cfg.pages.map(p => p.id));
+        data.pages.forEach(pg => { if (!existingIds.has(pg.id)) cfg.pages.push(pg); });
+        save(); cfg = load();
+      } else {
+        localStorage.setItem(STORE, reader.result);
+        cfg = load();
+      }
       render(); applyColors(); updatePageIndicator(); loadPluginsForPage();
       if (isSettingsOpen()) { renderPageSection(); buildColorGrids(); renderSettings(); }
-      showToast('config imported');
-    } catch { showToast('invalid JSON'); }
+      showToast(isStt ? '.stt imported' : 'config imported');
+    } catch { showToast('invalid file'); }
   };
   reader.readAsText(file);
 }
