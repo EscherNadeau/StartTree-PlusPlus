@@ -1,0 +1,2514 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>~</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg:     #282828;
+    --bg1:    #3c3836;
+    --bg2:    #1d2021;
+    --bg3:    #32302f;
+    --br:     #504945;
+    --br2:    #665c54;
+    --fg:     #ebdbb2;
+    --fg2:    #a89984;
+    --fg3:    #7c6f64;
+    --yellow: #fabd2f;
+    --green:  #b8bb26;
+    --cyan:   #83a598;
+    --orange: #fe8019;
+    --red:    #fb4934;
+    --purple: #d3869b;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  html, body {
+    height: 100%;
+    background: var(--bg);
+    color: var(--fg);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 15px;
+    line-height: 1.6;
+  }
+
+  body { display: flex; align-items: center; justify-content: center; }
+
+  .container { display: flex; flex-direction: column; }
+
+  .prompt { color: var(--fg2); margin-bottom: 4px; }
+  .prompt .user { color: var(--green); }
+  .prompt .at   { color: var(--fg3); }
+  .prompt .lam  { color: var(--yellow); margin: 0 6px; }
+  .prompt .cmd  { color: var(--fg); }
+
+  /* ── PAGE INDICATOR ── */
+  .page-indicator {
+    align-self: flex-end;
+    font-size: 11px;
+    color: var(--fg3);
+    user-select: none;
+    pointer-events: none;
+    padding-bottom: 4px;
+    letter-spacing: 0.05em;
+  }
+
+  /* ── TREE ── */
+  .tree { margin-bottom: 20px; }
+  .root { color: var(--fg2); margin-bottom: 2px; }
+
+  .columns {
+    display: grid;
+    grid-template-columns: repeat(var(--gcols, 3), max-content);
+    grid-auto-rows: auto;
+    gap: 14px 48px;
+    align-items: start;
+  }
+
+  .tree-block { min-width: 160px; }
+
+  ul { list-style: none; padding-left: 0; margin: 0; }
+
+  .cat > span { color: var(--yellow); }
+
+  .cat > ul { padding-left: 1.5rem; position: relative; }
+  .cat > ul::before {
+    content: "";
+    position: absolute;
+    left: 0.55rem; top: 0; bottom: 0.7rem;
+    border-left: 1px solid var(--br2);
+  }
+  .cat > ul > li { position: relative; padding-left: 1.1rem; }
+  .cat > ul > li::before {
+    content: "";
+    position: absolute;
+    left: 0; top: 0.75rem; width: 0.85rem;
+    border-top: 1px solid var(--br2);
+  }
+  .cat > ul > li:last-child::after {
+    content: "";
+    position: absolute;
+    left: 0; top: 0.75rem; bottom: 0;
+    background: var(--bg); width: 2px;
+  }
+
+  a { color: var(--cyan); text-decoration: none; transition: color 0.1s; }
+  a:hover { color: var(--fg); }
+
+  /* ── QUICK ADD ── */
+  .tree-quick-trigger { opacity: 0; transition: opacity 0.12s; }
+  .tree-block:hover .tree-quick-trigger { opacity: 1; }
+  .tree-quick-btn { color: var(--fg3) !important; font-size: 13px; }
+  .tree-quick-btn:hover { color: var(--fg2) !important; }
+  .tree-quick-label {
+    background: transparent; border: none; border-bottom: 1px solid var(--br2);
+    color: var(--fg); font-family: 'JetBrains Mono', monospace; font-size: 14px;
+    outline: none; caret-color: var(--yellow); padding: 0; width: 72px;
+  }
+  .tree-quick-url {
+    background: transparent; border: none; border-bottom: 1px solid var(--br2);
+    color: var(--fg2); font-family: 'JetBrains Mono', monospace; font-size: 14px;
+    outline: none; caret-color: var(--yellow); padding: 0; width: 130px; margin-left: 8px;
+  }
+
+  /* ── SEARCH ── */
+  .search-block { margin-top: 8px; }
+  .search-row { display: flex; align-items: center; gap: 8px; }
+  .search-label { color: var(--fg2); user-select: none; }
+
+  input[type="text"] {
+    background: transparent; border: none;
+    border-bottom: 1px solid var(--br2);
+    color: var(--fg); font-family: 'JetBrains Mono', monospace;
+    font-size: 15px; outline: none; width: 260px;
+    padding: 2px 0; caret-color: var(--yellow);
+  }
+  input[type="text"]::placeholder { color: var(--fg3); }
+
+  /* ── SETTINGS BUTTON ── */
+  .settings-btn {
+    position: fixed; top: 14px; right: 14px;
+    background: transparent; border: 1px solid var(--br);
+    color: var(--fg3); font-family: 'JetBrains Mono', monospace;
+    font-size: 14px; width: 30px; height: 30px;
+    cursor: pointer; display: flex; align-items: center; justify-content: center;
+    transition: all 0.1s; z-index: 50;
+  }
+  .settings-btn:hover { border-color: var(--br2); color: var(--fg2); }
+
+  /* ── SETTINGS PANEL ── */
+  .s-overlay {
+    display: none; position: fixed; inset: 0;
+    background: rgba(0,0,0,0.6); z-index: 100;
+  }
+  .s-overlay.on { display: block; }
+
+  .s-panel {
+    position: fixed; top: 0; right: 0;
+    width: 400px; height: 100vh;
+    background: var(--bg2); border-left: 1px solid var(--br2);
+    z-index: 101; display: flex; flex-direction: column;
+    transform: translateX(100%); transition: transform 0.2s ease;
+  }
+  .s-panel.on { transform: translateX(0); }
+
+  .s-head {
+    padding: 13px 16px; border-bottom: 1px solid var(--br);
+    display: flex; align-items: center; justify-content: space-between;
+    flex-shrink: 0;
+  }
+  .s-head-title { font-size: 11px; letter-spacing: 0.1em; color: var(--cyan); text-transform: uppercase; }
+
+  .s-close {
+    background: none; border: 1px solid var(--br);
+    color: var(--fg3); font-family: 'JetBrains Mono', monospace;
+    font-size: 12px; width: 24px; height: 24px;
+    cursor: pointer; display: flex; align-items: center; justify-content: center;
+    transition: all 0.1s;
+  }
+  .s-close:hover { border-color: var(--br2); color: var(--fg2); }
+
+  .s-sec-label {
+    font-size: 10px; letter-spacing: 0.1em; color: var(--yellow);
+    text-transform: uppercase; margin-bottom: 8px;
+  }
+
+  /* ── PAGES SECTION ── */
+  .s-pages-section {
+    padding: 10px 12px; border-bottom: 1px solid var(--br); flex-shrink: 0;
+  }
+  .s-page-tabs {
+    display: flex; flex-wrap: wrap; gap: 4px; align-items: center; margin-top: 6px;
+  }
+  .s-page-tab {
+    display: flex; align-items: center; gap: 4px;
+    border: 1px solid var(--br); padding: 3px 7px;
+    transition: border-color 0.1s;
+  }
+  .s-page-tab.active { border-color: var(--yellow); }
+  .s-page-tab:not(.active) { cursor: pointer; }
+  .s-page-tab:not(.active):hover { border-color: var(--br2); }
+  .s-page-tab-name {
+    font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--fg3);
+    max-width: 70px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  span.s-page-tab-name { display: inline-block; }
+  input.s-page-tab-name {
+    background: none; border: none; outline: none;
+    width: 60px; caret-color: var(--yellow);
+  }
+  .s-page-tab.active .s-page-tab-name { color: var(--yellow); }
+  .s-page-tab-del {
+    background: none; border: none; color: var(--br2);
+    font-family: 'JetBrains Mono', monospace; font-size: 10px;
+    cursor: pointer; padding: 0; line-height: 1; transition: color 0.1s; flex-shrink: 0;
+  }
+  .s-page-tab-del:hover { color: var(--red); }
+  .s-add-page-btn {
+    background: none; border: 1px dashed var(--br); color: var(--fg3);
+    font-family: 'JetBrains Mono', monospace; font-size: 14px;
+    width: 24px; height: 24px; cursor: pointer;
+    display: flex; align-items: center; justify-content: center; transition: all 0.1s;
+  }
+  .s-add-page-btn:hover { border-color: var(--green); color: var(--green); }
+
+  /* ── SEARCH SECTION ── */
+  .s-engine-row {
+    display: flex; align-items: center; gap: 10px;
+    padding: 7px 0; border-bottom: 1px solid var(--br);
+    cursor: pointer; transition: color 0.08s;
+  }
+  .s-engine-row.active { cursor: default; }
+  .s-engine-row:not(.active):hover .s-engine-row-name { color: var(--fg); }
+  .s-engine-row-name {
+    font-size: 12px; color: var(--fg2); width: 64px; flex-shrink: 0; transition: color 0.08s;
+  }
+  .s-engine-row.active .s-engine-row-name { color: var(--yellow); }
+  .s-engine-row-url {
+    flex: 1; font-size: 10px; color: var(--fg3);
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  .s-engine-row-dot { font-size: 9px; color: var(--yellow); flex-shrink: 0; }
+  .s-engine-form {
+    display: flex; gap: 6px; align-items: center; margin-top: 8px;
+  }
+  .s-engine-name-in {
+    background: transparent; border: none; border-bottom: 1px solid var(--br2);
+    color: var(--fg); font-family: 'JetBrains Mono', monospace; font-size: 11px;
+    outline: none; width: 72px; padding: 1px 0; caret-color: var(--yellow);
+  }
+  .s-engine-url-in {
+    background: transparent; border: none; border-bottom: 1px solid var(--br2);
+    color: var(--fg2); font-family: 'JetBrains Mono', monospace; font-size: 11px;
+    outline: none; flex: 1; padding: 1px 0; caret-color: var(--yellow);
+  }
+  .s-engine-url-in.err { border-bottom-color: var(--red); }
+
+  /* ── GRID (inline in footer) ── */
+  .s-grid-inline { display: flex; align-items: center; gap: 6px; }
+  .s-grid-name { font-size: 11px; color: var(--fg3); }
+  .s-stepper {
+    background: none; border: 1px solid var(--br);
+    color: var(--fg3); font-family: 'JetBrains Mono', monospace;
+    font-size: 13px; width: 22px; height: 22px;
+    cursor: pointer; display: flex; align-items: center; justify-content: center;
+    transition: all 0.1s; line-height: 1; user-select: none;
+  }
+  .s-stepper:hover { border-color: var(--br2); color: var(--fg); }
+  .s-grid-val { font-size: 14px; color: var(--fg); min-width: 18px; text-align: center; }
+
+  /* ── SETTINGS TABS ── */
+  .s-tabs {
+    display: flex; border-bottom: 1px solid var(--br); flex-shrink: 0;
+  }
+  .s-tab {
+    background: none; border: none; border-bottom: 2px solid transparent;
+    color: var(--fg3); font-family: 'JetBrains Mono', monospace;
+    font-size: 11px; letter-spacing: 0.05em; padding: 8px 14px;
+    cursor: pointer; transition: color 0.1s, border-color 0.1s; margin-bottom: -1px;
+  }
+  .s-tab:hover { color: var(--fg2); }
+  .s-tab.active { color: var(--yellow); border-bottom-color: var(--yellow); }
+
+  .s-tab-content { flex: 1; overflow: hidden; display: flex; flex-direction: column; }
+  .s-tab-panel { display: none; flex: 1; flex-direction: column; overflow: hidden; }
+  .s-tab-panel.active { display: flex; }
+
+  .s-tab-scroll { flex: 1; overflow-y: auto; padding: 10px 12px; }
+
+  .s-page-grid-row {
+    display: flex; align-items: center; justify-content: space-between;
+    padding-top: 10px; border-top: 1px solid var(--br); margin-top: 8px;
+  }
+
+  /* ── COLOR / THEME ── */
+  .s-colors-header {
+    display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px;
+  }
+
+  .s-reset-btn {
+    background: none; border: 1px solid var(--br);
+    color: var(--fg3); font-family: 'JetBrains Mono', monospace;
+    font-size: 10px; padding: 2px 8px; cursor: pointer; transition: all 0.1s;
+  }
+  .s-reset-btn:hover { border-color: var(--br2); color: var(--fg2); }
+
+  /* active theme label inside tree */
+  .s-theme-active { color: var(--yellow); }
+
+  .s-theme-add { color: var(--green) !important; }
+
+  .s-theme-name-in {
+    background: none; border: none; border-bottom: 1px solid var(--br2);
+    color: var(--yellow); font-family: 'JetBrains Mono', monospace;
+    font-size: inherit; line-height: inherit; outline: none;
+    width: 80px; caret-color: var(--yellow); vertical-align: baseline;
+  }
+
+  .s-ct-del {
+    background: none; border: none; color: var(--br2);
+    cursor: pointer; font-size: 10px; padding: 0 0 0 5px; line-height: 1;
+    transition: color 0.1s; vertical-align: middle;
+  }
+  .s-ct-del:hover { color: var(--red); }
+
+  .s-theme-drop {
+    font-size: 10px; letter-spacing: 0.05em; color: var(--fg3);
+    border: 1px dashed var(--br); padding: 4px 8px; margin-top: 6px;
+    text-align: center; transition: border-color 0.1s, color 0.1s; cursor: default;
+  }
+  .s-theme-drop.drag-over { border-color: var(--cyan); color: var(--cyan); }
+
+  .s-color-wrap .cat > ul > li:last-child::after { background: var(--bg2); }
+
+  .s-cdot {
+    display: inline-block; width: 9px; height: 9px;
+    border: 1px solid rgba(255,255,255,0.2);
+    margin-left: 8px; vertical-align: middle;
+    position: relative; top: -1px;
+  }
+
+  .s-cpick {
+    position: absolute; width: 0; height: 0;
+    opacity: 0; padding: 0; border: 0; pointer-events: none;
+  }
+
+  input[type="color"] {
+    width: 30px; height: 16px;
+    border: 1px solid var(--br); padding: 1px;
+    cursor: pointer; background: none; flex-shrink: 0;
+    -webkit-appearance: none;
+  }
+  input[type="color"]::-webkit-color-swatch-wrapper { padding: 0; }
+  input[type="color"]::-webkit-color-swatch { border: none; }
+  input[type="color"]:hover { border-color: var(--br2); }
+
+  .s-panel-color-inner { display: none; }
+  .s-panel-color-inner.open { display: block; }
+
+  /* ── TREES BODY ── */
+  .s-body {
+    flex: 1; overflow-y: auto; padding: 10px;
+    display: flex; flex-direction: column; gap: 6px;
+  }
+  .s-foot { padding: 10px; border-top: 1px solid var(--br); flex-shrink: 0; }
+
+  .s-add-tree-btn {
+    width: 100%; background: transparent;
+    border: 1px dashed var(--br); color: var(--fg3);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px; padding: 7px;
+    cursor: pointer; transition: all 0.1s;
+  }
+  .s-add-tree-btn:hover { border-color: var(--green); color: var(--green); }
+
+  .s-tree { background: var(--bg3); border: 1px solid var(--br); user-select: none; }
+  .s-tree.drop-before { border-top: 2px solid var(--yellow); }
+  .s-tree.drop-after  { border-bottom: 2px solid var(--yellow); }
+
+  .s-tree-head {
+    display: flex; align-items: center; gap: 6px;
+    padding: 6px 8px; border-bottom: 1px solid var(--br);
+    background: var(--bg1);
+  }
+  .drag-handle {
+    color: var(--br2); cursor: grab; font-size: 13px;
+    user-select: none; flex-shrink: 0; line-height: 1; padding: 1px 0;
+  }
+  .drag-handle:hover { color: var(--fg2); }
+
+  .s-tree-name {
+    flex: 1; background: transparent; border: none;
+    border-bottom: 1px solid transparent;
+    color: var(--yellow); font-family: 'JetBrains Mono', monospace;
+    font-size: 13px; outline: none; transition: border-color 0.1s; min-width: 0;
+  }
+  .s-tree-name:focus { border-bottom-color: var(--yellow); }
+  .s-tree-slash { color: var(--fg3); font-size: 13px; }
+  .s-tree-del {
+    background: none; border: none; color: var(--fg3);
+    cursor: pointer; font-size: 13px; padding: 1px 3px;
+    line-height: 1; transition: color 0.1s; flex-shrink: 0;
+  }
+  .s-tree-del:hover { color: var(--red); }
+
+  .s-links { padding: 4px 8px 6px; display: flex; flex-direction: column; gap: 2px; }
+  .s-link { display: flex; align-items: center; gap: 4px; padding: 1px 0; }
+  .s-link.drop-before { border-top: 1px solid var(--yellow); }
+  .s-link.drop-after  { border-bottom: 1px solid var(--yellow); }
+
+  .link-handle {
+    color: var(--br); cursor: grab; font-size: 10px;
+    user-select: none; flex-shrink: 0; line-height: 1;
+  }
+  .link-handle:hover { color: var(--fg3); }
+
+  .s-link-label {
+    width: 88px; flex-shrink: 0; background: transparent; border: none;
+    border-bottom: 1px solid transparent; color: var(--cyan);
+    font-family: 'JetBrains Mono', monospace; font-size: 11px; outline: none;
+    transition: border-color 0.1s;
+  }
+  .s-link-label:focus { border-bottom-color: var(--cyan); }
+
+  .s-link-url {
+    flex: 1; min-width: 0; background: transparent; border: none;
+    border-bottom: 1px solid transparent; color: var(--fg3);
+    font-family: 'JetBrains Mono', monospace; font-size: 11px; outline: none;
+    transition: border-color 0.1s;
+  }
+  .s-link-url:focus { border-bottom-color: var(--br2); }
+
+  .s-link-del {
+    background: none; border: none; color: var(--br);
+    cursor: pointer; font-size: 12px; padding: 0 2px;
+    line-height: 1; transition: color 0.1s; flex-shrink: 0;
+  }
+  .s-link-del:hover { color: var(--red); }
+
+  .s-add-link-btn {
+    background: transparent; border: none; color: var(--fg3);
+    font-family: 'JetBrains Mono', monospace; font-size: 11px; cursor: pointer;
+    padding: 2px 0 0 20px; text-align: left; transition: color 0.1s;
+  }
+  .s-add-link-btn:hover { color: var(--green); }
+
+  /* ── PLUGIN ── */
+  .plugin-dot { color: var(--fg3); font-size: 10px; margin-left: 4px; }
+
+  .s-plugin-toggle {
+    background: none; border: 1px solid var(--br);
+    color: var(--fg3); font-family: 'JetBrains Mono', monospace;
+    font-size: 11px; width: 20px; height: 20px; padding: 0;
+    cursor: pointer; display: flex; align-items: center; justify-content: center;
+    transition: all 0.1s; flex-shrink: 0; line-height: 1;
+  }
+  .s-plugin-toggle:hover { border-color: var(--br2); color: var(--fg2); }
+  .s-plugin-toggle.on { border-color: var(--cyan); color: var(--cyan); }
+
+  .s-plugin-body { padding: 8px; display: flex; flex-direction: column; gap: 8px; }
+  .s-plugin-row { display: flex; align-items: center; gap: 6px; }
+  .s-plugin-label { font-size: 10px; color: var(--fg3); width: 50px; flex-shrink: 0; letter-spacing: 0.04em; }
+  .s-plugin-url {
+    flex: 1; background: transparent; border: none;
+    border-bottom: 1px solid var(--br2); color: var(--fg2);
+    font-family: 'JetBrains Mono', monospace; font-size: 11px; outline: none;
+    transition: border-color 0.1s; padding: 1px 0;
+  }
+  .s-plugin-url:focus { border-bottom-color: var(--cyan); }
+  .s-plugin-secs {
+    width: 44px; background: transparent; border: none;
+    border-bottom: 1px solid var(--br2); color: var(--fg2);
+    font-family: 'JetBrains Mono', monospace; font-size: 11px; outline: none;
+    text-align: center; transition: border-color 0.1s; padding: 1px 0;
+  }
+  .s-plugin-secs:focus { border-bottom-color: var(--cyan); }
+  .s-plugin-hint { font-size: 10px; color: var(--fg3); }
+  .s-plugin-fetch {
+    background: transparent; border: none; color: var(--fg3);
+    font-family: 'JetBrains Mono', monospace; font-size: 11px; cursor: pointer;
+    padding: 2px 0; text-align: left; transition: color 0.1s;
+  }
+  .s-plugin-fetch:hover { color: var(--cyan); }
+
+  .tree-link-dim { color: var(--fg3); font-style: italic; cursor: default; }
+
+  /* ── OPTIONS MODAL ── */
+  .opts-overlay {
+    display: none; position: fixed; inset: 0;
+    background: rgba(0,0,0,0.8); z-index: 400;
+    align-items: center; justify-content: center;
+  }
+  .opts-overlay.on { display: flex; }
+  .opts-modal {
+    background: var(--bg2); border: 1px solid var(--br2);
+    width: 360px; max-width: 92vw; display: flex; flex-direction: column;
+  }
+  .opts-head {
+    padding: 10px 14px; border-bottom: 1px solid var(--br);
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .opts-title { font-size: 11px; letter-spacing: 0.1em; color: var(--cyan); text-transform: uppercase; }
+  .opts-plugin-name { font-size: 12px; color: var(--fg2); }
+  .opts-body { padding: 12px 14px; display: flex; flex-direction: column; gap: 10px; }
+  .opts-row { display: flex; align-items: center; gap: 8px; }
+  .opts-label { font-size: 10px; color: var(--fg3); letter-spacing: 0.05em; width: 80px; flex-shrink: 0; }
+  /* select control */
+  .opts-select {
+    flex: 1; background: var(--bg3); border: 1px solid var(--br);
+    color: var(--fg2); font-family: 'JetBrains Mono', monospace; font-size: 11px;
+    padding: 3px 6px; outline: none; cursor: pointer; transition: border-color 0.1s;
+    appearance: none; -webkit-appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='5'%3E%3Cpath d='M0 0l4 5 4-5z' fill='%237c6f64'/%3E%3C/svg%3E");
+    background-repeat: no-repeat; background-position: right 7px center; padding-right: 22px;
+  }
+  .opts-select:focus { border-color: var(--cyan); }
+  /* number control */
+  .opts-num-row { display: flex; align-items: center; gap: 4px; }
+  .opts-stepper {
+    background: none; border: 1px solid var(--br); color: var(--fg3);
+    font-family: 'JetBrains Mono', monospace; font-size: 12px;
+    width: 22px; height: 22px; cursor: pointer; line-height: 1;
+    display: flex; align-items: center; justify-content: center; transition: all 0.1s;
+  }
+  .opts-stepper:hover { border-color: var(--br2); color: var(--fg); }
+  .opts-num-val { font-size: 13px; color: var(--fg2); min-width: 28px; text-align: center; }
+  /* toggle control */
+  .opts-toggle {
+    width: 28px; height: 16px; background: var(--br2); border: none;
+    cursor: pointer; position: relative; transition: background 0.15s; flex-shrink: 0;
+  }
+  .opts-toggle::after {
+    content: ''; position: absolute; top: 2px; left: 2px;
+    width: 12px; height: 12px; background: var(--fg3); transition: all 0.15s;
+  }
+  .opts-toggle.on { background: var(--cyan); }
+  .opts-toggle.on::after { left: 14px; background: var(--bg); }
+  /* text control */
+  .opts-text {
+    flex: 1; background: transparent; border: none;
+    border-bottom: 1px solid var(--br2); color: var(--fg2);
+    font-family: 'JetBrains Mono', monospace; font-size: 11px;
+    outline: none; padding: 2px 0; transition: border-color 0.1s;
+  }
+  .opts-text:focus { border-bottom-color: var(--cyan); }
+  .opts-foot {
+    padding: 10px 14px; border-top: 1px solid var(--br);
+    display: flex; justify-content: space-between; align-items: center;
+  }
+  /* multiselect inside options modal */
+  .opts-multiselect-wrap { flex-direction: column; align-items: flex-start; gap: 4px; }
+  .opts-multiselect-list {
+    width: 100%; max-height: 190px; overflow-y: auto;
+    border: 1px solid var(--br);
+  }
+
+  .opts-cancel { background: none; border: 1px solid var(--br); color: var(--fg3);
+    font-family: 'JetBrains Mono', monospace; font-size: 11px;
+    padding: 4px 12px; cursor: pointer; transition: all 0.1s; }
+  .opts-cancel:hover { border-color: var(--br2); color: var(--fg2); }
+  .opts-ok { background: none; border: 1px solid var(--cyan); color: var(--cyan);
+    font-family: 'JetBrains Mono', monospace; font-size: 11px;
+    padding: 4px 12px; cursor: pointer; transition: all 0.1s; }
+  .opts-ok:hover { background: var(--cyan); color: var(--bg); }
+
+  /* ── PICKER MODAL ── */
+  .pick-overlay {
+    display: none; position: fixed; inset: 0;
+    background: rgba(0,0,0,0.8); z-index: 400;
+    align-items: center; justify-content: center;
+  }
+  .pick-overlay.on { display: flex; }
+  .pick-modal {
+    background: var(--bg2); border: 1px solid var(--br2);
+    width: 340px; max-width: 92vw; max-height: 80vh;
+    display: flex; flex-direction: column;
+  }
+  .pick-head {
+    padding: 10px 14px; border-bottom: 1px solid var(--br);
+    display: flex; align-items: center; justify-content: space-between; flex-shrink: 0;
+  }
+  .pick-title { font-size: 11px; letter-spacing: 0.1em; color: var(--cyan); text-transform: uppercase; }
+  .pick-body { flex: 1; overflow-y: auto; padding: 8px 0; }
+  .pick-item {
+    display: flex; align-items: center; gap: 10px;
+    padding: 6px 14px; cursor: pointer; transition: background 0.08s;
+  }
+  .pick-item:hover { background: rgba(255,255,255,0.03); }
+  .pick-check {
+    width: 13px; height: 13px; border: 1px solid var(--br2);
+    background: transparent; flex-shrink: 0; cursor: pointer;
+    appearance: none; -webkit-appearance: none; transition: all 0.1s;
+  }
+  .pick-check:checked { background: var(--cyan); border-color: var(--cyan); }
+  .pick-name { font-size: 11px; color: var(--fg2); flex: 1; }
+  .pick-count { font-size: 10px; color: var(--fg3); flex-shrink: 0; }
+  .pick-foot {
+    padding: 10px 14px; border-top: 1px solid var(--br);
+    display: flex; justify-content: space-between; align-items: center; flex-shrink: 0;
+  }
+
+  /* ── CREDENTIAL MODAL ── */
+  .cred-overlay {
+    display: none; position: fixed; inset: 0;
+    background: rgba(0,0,0,0.8); z-index: 400;
+    align-items: center; justify-content: center;
+  }
+  .cred-overlay.on { display: flex; }
+  .cred-modal {
+    background: var(--bg2); border: 1px solid var(--br2);
+    width: 340px; max-width: 90vw;
+    display: flex; flex-direction: column;
+  }
+  .cred-head {
+    padding: 10px 14px; border-bottom: 1px solid var(--br);
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .cred-title { font-size: 11px; letter-spacing: 0.1em; color: var(--cyan); text-transform: uppercase; }
+  .cred-plugin-name { font-size: 12px; color: var(--fg2); }
+  .cred-divider { font-size: 10px; color: var(--fg3); letter-spacing: 0.06em; margin-top: 2px; }
+  .cred-body { padding: 14px 14px 10px; display: flex; flex-direction: column; gap: 12px; }
+  .cred-field { display: flex; flex-direction: column; gap: 3px; }
+  .cred-field-name { font-size: 11px; color: var(--yellow); letter-spacing: 0.05em; }
+  .cred-field-desc { font-size: 10px; color: var(--fg3); margin-bottom: 2px; }
+  .cred-field input[type="text"] { width: 100%; font-size: 12px; }
+  .cred-foot {
+    padding: 10px 14px; border-top: 1px solid var(--br);
+    display: flex; justify-content: space-between; align-items: center;
+  }
+  .cred-cancel {
+    background: none; border: 1px solid var(--br); color: var(--fg3);
+    font-family: 'JetBrains Mono', monospace; font-size: 11px;
+    padding: 4px 12px; cursor: pointer; transition: all 0.1s;
+  }
+  .cred-cancel:hover { border-color: var(--br2); color: var(--fg2); }
+  .cred-ok {
+    background: none; border: 1px solid var(--cyan); color: var(--cyan);
+    font-family: 'JetBrains Mono', monospace; font-size: 11px;
+    padding: 4px 12px; cursor: pointer; transition: all 0.1s;
+  }
+  .cred-ok:hover { background: var(--cyan); color: var(--bg); }
+
+  /* ── DROP OVERLAY ── */
+  .drop-overlay {
+    display: none; position: fixed; inset: 0;
+    background: rgba(0,0,0,0.82); z-index: 200;
+    pointer-events: none;
+  }
+  .drop-overlay.on { display: flex; }
+
+  .dz {
+    flex: 1; display: flex; flex-direction: column;
+    align-items: center; justify-content: center; gap: 10px;
+    transition: background 0.12s;
+  }
+  .dz-mid { border-left: 1px solid var(--br); border-right: 1px solid var(--br); }
+  .dz-active { background: rgba(255,255,255,0.04); }
+  .dz-dim { opacity: 0.3; }
+
+  .dz-arrow {
+    font-size: 26px; color: var(--fg3);
+    transition: color 0.12s; line-height: 1;
+  }
+  .dz-active .dz-arrow { color: var(--cyan); }
+
+  .dz-name {
+    font-size: 11px; color: var(--fg3);
+    letter-spacing: 0.08em; transition: color 0.12s;
+  }
+  .dz-active .dz-name { color: var(--fg2); }
+
+  .dz-hint { font-size: 10px; color: var(--fg3); letter-spacing: 0.06em; opacity: 0.5; }
+
+  /* ── TOAST ── */
+  #hb-toast {
+    position: fixed; bottom: 22px; left: 50%; transform: translateX(-50%);
+    background: var(--bg1); border: 1px solid var(--br2);
+    color: var(--fg2); font-size: 12px; padding: 5px 14px;
+    opacity: 0; transition: opacity 0.2s ease; pointer-events: none;
+    z-index: 300; white-space: nowrap;
+  }
+  #hb-toast.on { opacity: 1; }
+
+  .s-backup-row { display: flex; gap: 6px; }
+  .s-import-label { cursor: pointer; }
+
+  ::-webkit-scrollbar { width: 3px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--br); }
+</style>
+</head>
+<body>
+
+<button class="settings-btn" onclick="openSettings()" title="settings">⚙</button>
+
+<div class="container" id="main-container">
+  <div class="page-indicator" id="page-indicator"></div>
+  <div class="prompt">
+    <span class="user">escher</span><span class="at">@</span><span class="user">voyager</span><span class="lam">λ</span><span class="cmd">tree ~</span>
+  </div>
+  <div class="tree">
+    <div class="root">.</div>
+    <div class="columns" id="columns"></div>
+  </div>
+  <div class="search-block">
+    <div class="prompt">
+      <span class="user">escher</span><span class="at">@</span><span class="user">voyager</span><span class="lam">λ</span><span class="cmd" id="search-engine-label">ddg</span>
+    </div>
+    <div class="search-row">
+      <span class="search-label">search:</span>
+      <form id="search-form" onsubmit="doSearch(event)">
+        <input type="text" id="search-input" autofocus placeholder="query...">
+      </form>
+    </div>
+  </div>
+</div>
+
+<div class="drop-overlay" id="drop-overlay">
+  <div class="dz" id="dz-left">
+    <span class="dz-arrow">←</span>
+    <span class="dz-name" id="dz-left-name">prev</span>
+  </div>
+  <div class="dz dz-mid" id="dz-center">
+    <span class="dz-arrow">+</span>
+    <span class="dz-name" id="dz-center-name">here</span>
+    <span class="dz-hint">.json · .py</span>
+  </div>
+  <div class="dz" id="dz-right">
+    <span class="dz-arrow" id="dz-right-arrow">→</span>
+    <span class="dz-name" id="dz-right-name">next</span>
+  </div>
+</div>
+
+<div class="opts-overlay" id="opts-overlay">
+  <div class="opts-modal" id="opts-modal">
+    <div class="opts-head">
+      <span class="opts-title">options</span>
+      <button class="s-close" id="opts-close">✕</button>
+    </div>
+    <div class="opts-body" id="opts-body"></div>
+    <div class="opts-foot">
+      <button class="opts-cancel" id="opts-cancel">cancel</button>
+      <button class="opts-ok" id="opts-ok">create tree</button>
+    </div>
+  </div>
+</div>
+
+<div class="pick-overlay" id="pick-overlay">
+  <div class="pick-modal" id="pick-modal">
+    <div class="pick-head">
+      <span class="pick-title" id="pick-title">pick collections</span>
+      <button class="s-close" id="pick-close">✕</button>
+    </div>
+    <div class="pick-body" id="pick-body"></div>
+    <div class="pick-foot">
+      <button class="opts-cancel" id="pick-cancel">cancel</button>
+      <button class="opts-ok" id="pick-ok">add trees</button>
+    </div>
+  </div>
+</div>
+
+<div class="cred-overlay" id="cred-overlay">
+  <div class="cred-modal" id="cred-modal">
+    <div class="cred-head">
+      <span class="cred-title">install plugin</span>
+      <button class="s-close" id="cred-close">✕</button>
+    </div>
+    <div class="cred-body" id="cred-body"></div>
+    <div class="cred-foot">
+      <button class="cred-cancel" id="cred-cancel">cancel</button>
+      <button class="cred-ok" id="cred-ok">install</button>
+    </div>
+  </div>
+</div>
+
+<div id="hb-toast"></div>
+
+<div class="s-overlay" id="s-overlay" onclick="closeSettings()"></div>
+<div class="s-panel" id="s-panel">
+  <div class="s-head">
+    <span class="s-head-title">settings</span>
+    <button class="s-close" onclick="closeSettings()">✕</button>
+  </div>
+
+  <!-- pages always visible — it's navigation -->
+  <div class="s-pages-section" id="s-pages-section"></div>
+
+  <!-- tab bar -->
+  <div class="s-tabs">
+    <button class="s-tab active" id="s-tab-btn-links" onclick="switchSettingsTab('links')">links</button>
+    <button class="s-tab" id="s-tab-btn-page" onclick="switchSettingsTab('page')">page</button>
+    <button class="s-tab" id="s-tab-btn-search" onclick="switchSettingsTab('search')">search</button>
+  </div>
+
+  <div class="s-tab-content">
+
+    <!-- links tab: tree + link editor -->
+    <div class="s-tab-panel active" id="s-panel-links">
+      <div class="s-body" id="s-body"></div>
+    </div>
+
+    <!-- page tab: theme, colors, grid -->
+    <div class="s-tab-panel" id="s-panel-page">
+      <div class="s-tab-scroll">
+        <div class="s-colors-header">
+          <span class="s-sec-label" id="theme-name-label" style="margin:0">theme: gruvbox</span>
+          <button class="s-reset-btn" onclick="resetColors('page')">reset</button>
+        </div>
+        <div id="color-grid-page"></div>
+        <div id="color-grid-panel"></div>
+        <div class="s-page-grid-row">
+          <span class="s-sec-label" style="margin:0">grid</span>
+          <div class="s-grid-inline">
+            <span class="s-grid-name">cols</span>
+            <button class="s-stepper" onclick="stepGrid('cols',-1)">−</button>
+            <span class="s-grid-val" id="val-cols">3</span>
+            <button class="s-stepper" onclick="stepGrid('cols',1)">+</button>
+            <span class="s-grid-name" style="margin-left:10px">rows</span>
+            <button class="s-stepper" onclick="stepGrid('rows',-1)">−</button>
+            <span class="s-grid-val" id="val-rows">2</span>
+            <button class="s-stepper" onclick="stepGrid('rows',1)">+</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- search tab -->
+    <div class="s-tab-panel" id="s-panel-search">
+      <div class="s-tab-scroll">
+        <div id="s-search-section"></div>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="s-foot">
+    <div class="s-backup-row">
+      <button class="s-reset-btn" onclick="exportConfig()">export</button>
+      <label class="s-reset-btn s-import-label">import<input type="file" accept=".json" style="display:none" onchange="importConfig(this)"></label>
+    </div>
+  </div>
+</div>
+
+<script>
+const STORE = 'homebase';
+function uid() { return Math.random().toString(36).slice(2, 9); }
+function deep(o) { return JSON.parse(JSON.stringify(o)); }
+
+const GRUVBOX = {
+  bg:'#282828', bg1:'#3c3836', bg2:'#1d2021', bg3:'#32302f',
+  br:'#504945',  br2:'#665c54',
+  fg:'#ebdbb2',  fg2:'#a89984',  fg3:'#7c6f64',
+  yellow:'#fabd2f', green:'#b8bb26', cyan:'#83a598',
+  orange:'#fe8019', red:'#fb4934',  purple:'#d3869b',
+};
+
+const THEMES = [
+  { id: 'gruvbox', name: 'gruvbox', colors: {
+    bg:'#282828', bg1:'#3c3836', bg2:'#1d2021', bg3:'#32302f',
+    br:'#504945', br2:'#665c54', fg:'#ebdbb2', fg2:'#a89984', fg3:'#7c6f64',
+    yellow:'#fabd2f', green:'#b8bb26', cyan:'#83a598',
+    orange:'#fe8019', red:'#fb4934', purple:'#d3869b',
+  }},
+  { id: 'nord', name: 'nord', colors: {
+    bg:'#2e3440', bg1:'#3b4252', bg2:'#242933', bg3:'#434c5e',
+    br:'#3b4252', br2:'#4c566a', fg:'#eceff4', fg2:'#d8dee9', fg3:'#4c566a',
+    yellow:'#ebcb8b', green:'#a3be8c', cyan:'#88c0d0',
+    orange:'#d08770', red:'#bf616a', purple:'#b48ead',
+  }},
+  { id: 'catppuccin', name: 'catppuccin', colors: {
+    bg:'#1e1e2e', bg1:'#313244', bg2:'#181825', bg3:'#45475a',
+    br:'#313244', br2:'#45475a', fg:'#cdd6f4', fg2:'#a6adc8', fg3:'#585b70',
+    yellow:'#f9e2af', green:'#a6e3a1', cyan:'#89dceb',
+    orange:'#fab387', red:'#f38ba8', purple:'#cba4f7',
+  }},
+  { id: 'dracula', name: 'dracula', colors: {
+    bg:'#282a36', bg1:'#44475a', bg2:'#21222c', bg3:'#383a59',
+    br:'#44475a', br2:'#6272a4', fg:'#f8f8f2', fg2:'#bfbfbf', fg3:'#6272a4',
+    yellow:'#f1fa8c', green:'#50fa7b', cyan:'#8be9fd',
+    orange:'#ffb86c', red:'#ff5555', purple:'#bd93f9',
+  }},
+  { id: 'tokyonight', name: 'tokyo night', colors: {
+    bg:'#1a1b26', bg1:'#24283b', bg2:'#16161e', bg3:'#1f2335',
+    br:'#292e42', br2:'#3b4261', fg:'#c0caf5', fg2:'#a9b1d6', fg3:'#565f89',
+    yellow:'#e0af68', green:'#9ece6a', cyan:'#7dcfff',
+    orange:'#ff9e64', red:'#f7768e', purple:'#bb9af7',
+  }},
+  { id: 'onedark', name: 'one dark', colors: {
+    bg:'#282c34', bg1:'#3e4451', bg2:'#21252b', bg3:'#323842',
+    br:'#3e4451', br2:'#4b5263', fg:'#abb2bf', fg2:'#828997', fg3:'#5c6370',
+    yellow:'#e5c07b', green:'#98c379', cyan:'#56b6c2',
+    orange:'#d19a66', red:'#e06c75', purple:'#c678dd',
+  }},
+];
+
+const SEARCH_ENGINES = [
+  { id: 'ddg',    name: 'ddg',     url: 'https://duckduckgo.com/?q={q}' },
+  { id: 'google', name: 'google',  url: 'https://www.google.com/search?q={q}' },
+  { id: 'bing',   name: 'bing',    url: 'https://www.bing.com/search?q={q}' },
+  { id: 'brave',  name: 'brave',   url: 'https://search.brave.com/search?q={q}' },
+  { id: 'kagi',   name: 'kagi',    url: 'https://kagi.com/search?q={q}' },
+  { id: 'yt',     name: 'youtube', url: 'https://www.youtube.com/results?search_query={q}' },
+];
+
+const PAGE_COLORS = [
+  ['bg','background'],['fg','text'],['fg2','muted text'],['fg3','dim text'],
+  ['yellow','tree names'],['cyan','links'],['green','username'],
+];
+
+const PANEL_COLORS = [
+  ['bg2','panel bg'],['bg1','header bg'],['bg3','card bg'],
+  ['br','border'],['br2','border hi'],
+  ['red','delete'],['purple','title'],['orange','accent'],
+];
+
+const DEFAULTS = {
+  activePage: 0,
+  customThemes: [],
+  search: { activeEngine: 'ddg', customEngines: [] },
+  pages: [{
+    id: 'p1', name: 'home', theme: 'gruvbox',
+    grid: { cols: 3, rows: 2 },
+    colors: {
+      bg:'#282828', bg1:'#3c3836', bg2:'#1d2021', bg3:'#32302f',
+      br:'#504945', br2:'#665c54', fg:'#ebdbb2', fg2:'#a89984', fg3:'#7c6f64',
+      yellow:'#fabd2f', green:'#b8bb26', cyan:'#83a598',
+      orange:'#fe8019', red:'#fb4934', purple:'#d3869b',
+    },
+    trees: [
+      { id:'t1', name:'general', links:[
+        {id:'l1',label:'github',url:'https://github.com'},
+        {id:'l2',label:'gmail',url:'https://mail.google.com'},
+        {id:'l3',label:'calendar',url:'https://calendar.google.com'},
+        {id:'l4',label:'youtube',url:'https://www.youtube.com'},
+      ]},
+      { id:'t2', name:'dev', links:[
+        {id:'l5',label:'claude',url:'https://claude.ai'},
+        {id:'l6',label:'chatgpt',url:'https://chatgpt.com'},
+        {id:'l7',label:'vercel',url:'https://vercel.com'},
+        {id:'l8',label:'crates.io',url:'https://crates.io'},
+      ]},
+      { id:'t3', name:'reddit', links:[
+        {id:'l9', label:'front page',url:'https://reddit.com'},
+        {id:'l10',label:'linux',url:'https://reddit.com/r/linux'},
+        {id:'l11',label:'unixporn',url:'https://reddit.com/r/unixporn'},
+        {id:'l12',label:'archlinux',url:'https://reddit.com/r/archlinux'},
+      ]},
+      { id:'t4', name:'spaces', links:[
+        {id:'l13',label:'linux feed',url:'linux.html'},
+        {id:'l14',label:'music feed',url:'music.html'},
+      ]},
+      { id:'t5', name:'media', links:[
+        {id:'l15',label:'spotify',url:'https://open.spotify.com'},
+        {id:'l16',label:'netflix',url:'https://www.netflix.com'},
+        {id:'l17',label:'twitch',url:'https://www.twitch.tv'},
+        {id:'l18',label:'steam',url:'https://store.steampowered.com'},
+      ]},
+      { id:'t6', name:'news', links:[
+        {id:'l19',label:'hacker news',url:'https://news.ycombinator.com'},
+        {id:'l20',label:'lobsters',url:'https://lobste.rs'},
+        {id:'l21',label:'lwn',url:'https://lwn.net'},
+      ]},
+    ]
+  }]
+};
+
+// ── LOAD / SAVE ──────────────────────────────────────────────
+function load() {
+  try {
+    const s = localStorage.getItem(STORE);
+    if (!s) return deep(DEFAULTS);
+    let p = JSON.parse(s);
+
+    // migrate old format: { grid, colors, trees } → { pages, activePage }
+    if (!p.pages && p.trees) {
+      p = {
+        activePage: 0,
+        pages: [{
+          id: uid(), name: 'home', theme: 'gruvbox',
+          grid:   p.grid   || { cols: 3, rows: 2 },
+          colors: p.colors || deep(GRUVBOX),
+          trees:  p.trees  || [],
+        }]
+      };
+    }
+
+    if (!p.customThemes) p.customThemes = [];
+    if (!p.search) p.search = { activeEngine: 'ddg', customEngines: [] };
+    if (!p.search.customEngines) p.search.customEngines = [];
+    if (!p.pages || !p.pages.length) { p.pages = deep(DEFAULTS.pages); p.activePage = 0; }
+    if (typeof p.activePage !== 'number') p.activePage = 0;
+    if (p.activePage >= p.pages.length)   p.activePage = 0;
+
+    p.pages.forEach(pg => {
+      if (!pg.id)     pg.id     = uid();
+      if (!pg.name)   pg.name   = 'page';
+      if (!pg.theme)  pg.theme  = 'gruvbox';
+      if (!pg.grid)   pg.grid   = { cols: 3, rows: 2 };
+      if (!pg.colors) pg.colors = deep(GRUVBOX);
+      if (!pg.trees)  pg.trees  = [];
+    });
+
+    return p;
+  } catch { return deep(DEFAULTS); }
+}
+
+function save() { localStorage.setItem(STORE, JSON.stringify(cfg)); }
+
+let cfg = load();
+
+// ── PAGE HELPERS ─────────────────────────────────────────────
+function currentPage() { return cfg.pages[cfg.activePage]; }
+function isSettingsOpen() { return document.getElementById('s-panel').classList.contains('on'); }
+
+// ── COLORS ───────────────────────────────────────────────────
+function applyColors() {
+  const c = currentPage().colors;
+  const r = document.documentElement;
+  Object.entries(c).forEach(([k, v]) => r.style.setProperty('--' + k, v));
+}
+
+function updateColor(key, val) {
+  currentPage().colors[key] = val;
+  currentPage().theme = 'custom';
+  save(); applyColors(); updateThemeLabel();
+}
+
+function applyTheme(id) {
+  const theme = THEMES.find(t => t.id === id) || cfg.customThemes.find(t => t.id === id);
+  if (!theme) return;
+  currentPage().colors = deep(theme.colors);
+  currentPage().theme  = id;
+  save(); applyColors(); updateThemeLabel();
+  buildColorGrids();
+}
+
+function resetColors(which) {
+  const pg = currentPage();
+  if (which === 'page') {
+    const tid = pg.theme && pg.theme !== 'custom' ? pg.theme : 'gruvbox';
+    const theme = THEMES.find(t => t.id === tid) || cfg.customThemes.find(t => t.id === tid) || THEMES[0];
+    PAGE_COLORS.forEach(([k]) => { pg.colors[k] = theme.colors[k]; });
+    pg.theme = theme.id;
+  } else if (which === 'panel') {
+    PANEL_COLORS.forEach(([k]) => { pg.colors[k] = GRUVBOX[k]; });
+  } else {
+    pg.colors = deep(GRUVBOX); pg.theme = 'gruvbox';
+  }
+  save(); applyColors(); updateThemeLabel(); buildColorGrids();
+}
+
+function updateThemeLabel() {
+  const el = document.getElementById('theme-name-label');
+  if (!el) return;
+  const tid   = currentPage().theme || 'gruvbox';
+  const theme = THEMES.find(t => t.id === tid) || cfg.customThemes.find(t => t.id === tid);
+  el.textContent = 'theme: ' + (theme ? theme.name : 'custom');
+}
+
+function buildThemeSection(el) {
+  el.innerHTML = '';
+  const activeId = currentPage().theme || 'gruvbox';
+
+  // ── built-in theme list ──
+  const wrap1 = document.createElement('div');
+  wrap1.className = 's-color-wrap';
+  const ul1 = document.createElement('ul');
+  const catLi1 = document.createElement('li');
+  catLi1.className = 'cat';
+  const catSpan1 = document.createElement('span');
+  catSpan1.textContent = 'themes/';
+  catLi1.appendChild(catSpan1);
+  const inner1 = document.createElement('ul');
+
+  THEMES.forEach(theme => {
+    const li = document.createElement('li');
+    if (theme.id === activeId) {
+      const span = document.createElement('span');
+      span.className = 's-theme-active';
+      span.textContent = '● ' + theme.name;
+      li.appendChild(span);
+    } else {
+      const a = document.createElement('a');
+      a.href = '#'; a.textContent = theme.name;
+      a.addEventListener('click', e => { e.preventDefault(); applyTheme(theme.id); });
+      li.appendChild(a);
+    }
+    inner1.appendChild(li);
+  });
+
+  catLi1.appendChild(inner1);
+  ul1.appendChild(catLi1);
+  wrap1.appendChild(ul1);
+  el.appendChild(wrap1);
+
+  // ── custom section (collapsible) ──
+  const custHasItems = cfg.customThemes.length > 0;
+  let custOpen = custHasItems;
+
+  const custToggleEl = document.createElement('div');
+  custToggleEl.style.cssText = 'margin-top:8px; cursor:pointer; user-select:none; font-size:11px; color:var(--fg3); letter-spacing:0.05em;';
+
+  const custContent = document.createElement('div');
+  custContent.style.display = custOpen ? '' : 'none';
+
+  function updateCustToggle() {
+    custToggleEl.textContent = (custOpen ? '▾' : '▸') + ' custom';
+  }
+  updateCustToggle();
+  custToggleEl.addEventListener('click', () => {
+    custOpen = !custOpen;
+    custContent.style.display = custOpen ? '' : 'none';
+    updateCustToggle();
+  });
+
+  // custom themes list
+  const custWrap = document.createElement('div');
+  custWrap.className = 's-color-wrap';
+  custWrap.style.marginTop = '6px';
+  const ulC = document.createElement('ul');
+  const catLiC = document.createElement('li');
+  catLiC.className = 'cat';
+  const catSpanC = document.createElement('span');
+  catSpanC.textContent = 'saved/';
+  catLiC.appendChild(catSpanC);
+  const innerC = document.createElement('ul');
+
+  cfg.customThemes.forEach(theme => {
+    const li = document.createElement('li');
+    const isActive = theme.id === activeId;
+    if (isActive) {
+      const bullet = document.createElement('span');
+      bullet.className = 's-theme-active'; bullet.textContent = '● ';
+      li.appendChild(bullet);
+      const nameIn = document.createElement('input');
+      nameIn.className = 's-theme-name-in';
+      nameIn.value = theme.name; nameIn.spellcheck = false;
+      nameIn.addEventListener('input', () => { theme.name = nameIn.value; save(); updateThemeLabel(); });
+      li.appendChild(nameIn);
+    } else {
+      const a = document.createElement('a');
+      a.href = '#'; a.textContent = theme.name;
+      a.addEventListener('click', e => { e.preventDefault(); applyTheme(theme.id); });
+      li.appendChild(a);
+    }
+    const del = document.createElement('button');
+    del.className = 's-ct-del'; del.textContent = '✕'; del.title = 'delete theme';
+    del.addEventListener('click', () => {
+      cfg.customThemes = cfg.customThemes.filter(t => t.id !== theme.id);
+      if (currentPage().theme === theme.id) {
+        currentPage().theme = 'gruvbox';
+        PAGE_COLORS.forEach(([k]) => { currentPage().colors[k] = GRUVBOX[k]; });
+        applyColors();
+      }
+      save(); updateThemeLabel(); buildColorGrids();
+    });
+    li.appendChild(del);
+    innerC.appendChild(li);
+  });
+
+  // + save as theme
+  const saveLi = document.createElement('li');
+  const saveA  = document.createElement('a');
+  saveA.href = '#'; saveA.className = 's-theme-add'; saveA.textContent = '+ save as theme';
+  saveA.addEventListener('click', e => {
+    e.preventDefault();
+    const t = { id: uid(), name: 'custom ' + (cfg.customThemes.length + 1), colors: deep(currentPage().colors) };
+    cfg.customThemes.push(t);
+    currentPage().theme = t.id;
+    save(); updateThemeLabel(); buildColorGrids();
+    setTimeout(() => { const inp = document.querySelector('.s-theme-name-in'); inp?.focus(); inp?.select(); }, 40);
+  });
+  saveLi.appendChild(saveA);
+  innerC.appendChild(saveLi);
+
+  catLiC.appendChild(innerC);
+  ulC.appendChild(catLiC);
+  custWrap.appendChild(ulC);
+  custContent.appendChild(custWrap);
+
+  // drop zone inside custom section
+  const dropZone = document.createElement('div');
+  dropZone.className = 's-theme-drop';
+  dropZone.textContent = 'drop .json to import theme';
+  dropZone.addEventListener('dragover',  e => { e.preventDefault(); dropZone.classList.add('drag-over'); });
+  dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag-over'));
+  dropZone.addEventListener('drop', e => {
+    e.preventDefault(); dropZone.classList.remove('drag-over');
+    const file = e.dataTransfer.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      try {
+        const data   = JSON.parse(reader.result);
+        const name   = data.name   || file.name.replace(/\.json$/i, '');
+        const colors = data.colors || data;
+        if (!colors.bg || !colors.fg) return;
+        const full = { ...deep(GRUVBOX), ...colors };
+        cfg.customThemes.push({ id: uid(), name, colors: full });
+        save(); buildColorGrids();
+      } catch {}
+    };
+    reader.readAsText(file);
+  });
+  custContent.appendChild(dropZone);
+
+  el.appendChild(custToggleEl);
+  el.appendChild(custContent);
+
+  // ── color pickers (always visible) ──
+  const wrap2 = document.createElement('div');
+  wrap2.className = 's-color-wrap';
+  wrap2.style.marginTop = '8px';
+  const ul2 = document.createElement('ul');
+  const catLi2 = document.createElement('li');
+  catLi2.className = 'cat';
+
+  const catSpan2 = document.createElement('span');
+  catSpan2.style.cursor = 'pointer'; catSpan2.style.userSelect = 'none';
+  const inner2 = document.createElement('ul');
+  inner2.className = 's-panel-color-inner open';
+  let open = true;
+  function updateLabel() { catSpan2.textContent = (open ? '▾ ' : '▸ ') + 'colors/'; }
+  updateLabel();
+  catSpan2.addEventListener('click', () => { open = !open; inner2.classList.toggle('open', open); updateLabel(); });
+
+  PAGE_COLORS.forEach(([key, label]) => {
+    const val = currentPage().colors[key] || GRUVBOX[key];
+    const li  = document.createElement('li');
+    const dot = document.createElement('span');
+    dot.className = 's-cdot'; dot.id = 'cdot-' + key;
+    dot.style.background = val;
+    const picker = document.createElement('input');
+    picker.type = 'color'; picker.value = val; picker.className = 's-cpick';
+    picker.addEventListener('input', () => { dot.style.background = picker.value; updateColor(key, picker.value); });
+    const a = document.createElement('a');
+    a.href = '#';
+    a.addEventListener('click', e => { e.preventDefault(); picker.click(); });
+    a.appendChild(document.createTextNode(label));
+    a.appendChild(dot);
+    li.appendChild(a);
+    li.appendChild(picker);
+    inner2.appendChild(li);
+  });
+
+  catLi2.appendChild(catSpan2);
+  catLi2.appendChild(inner2);
+  ul2.appendChild(catLi2);
+  wrap2.appendChild(ul2);
+  el.appendChild(wrap2);
+}
+
+function buildPanelColorGrid(el, defs) {
+  el.innerHTML = '';
+  const wrap = document.createElement('div');
+  wrap.className = 's-color-wrap';
+
+  const ul = document.createElement('ul');
+  const catLi = document.createElement('li');
+  catLi.className = 'cat';
+  const catSpan = document.createElement('span');
+  catSpan.style.cursor = 'pointer'; catSpan.style.userSelect = 'none';
+  const inner = document.createElement('ul');
+  inner.className = 's-panel-color-inner open';
+  let open = true;
+  function updateLabel() { catSpan.textContent = (open ? '▾ ' : '▸ ') + 'panel colors/'; }
+  updateLabel();
+  catSpan.addEventListener('click', () => { open = !open; inner.classList.toggle('open', open); updateLabel(); });
+
+  const resetBtn = document.createElement('button');
+  resetBtn.className = 's-reset-btn'; resetBtn.textContent = 'reset';
+  resetBtn.style.marginLeft = 'auto';
+  resetBtn.addEventListener('click', () => resetColors('panel'));
+
+  defs.forEach(([key, label]) => {
+    const val = currentPage().colors[key] || GRUVBOX[key];
+    const li  = document.createElement('li');
+
+    const dot = document.createElement('span');
+    dot.className = 's-cdot'; dot.id = 'cdot-panel-' + key;
+    dot.style.background = val;
+
+    const picker = document.createElement('input');
+    picker.type = 'color'; picker.value = val; picker.className = 's-cpick';
+    picker.addEventListener('input', () => { dot.style.background = picker.value; updateColor(key, picker.value); });
+
+    const a = document.createElement('a');
+    a.href = '#';
+    a.addEventListener('click', e => { e.preventDefault(); picker.click(); });
+    a.appendChild(document.createTextNode(label));
+    a.appendChild(dot);
+
+    li.appendChild(a);
+    li.appendChild(picker);
+    inner.appendChild(li);
+  });
+
+  catLi.appendChild(catSpan);
+  catLi.appendChild(inner);
+  ul.appendChild(catLi);
+
+  wrap.style.display = 'flex'; wrap.style.alignItems = 'flex-start'; wrap.style.gap = '8px';
+  wrap.appendChild(ul);
+  wrap.appendChild(resetBtn);
+  el.appendChild(wrap);
+}
+
+function buildColorGrids() {
+  buildThemeSection(document.getElementById('color-grid-page'));
+  buildPanelColorGrid(document.getElementById('color-grid-panel'), PANEL_COLORS);
+}
+
+// ── QUICK ADD ────────────────────────────────────────────────
+function showQuickAdd(triggerLi, tree) {
+  triggerLi.className = '';
+  triggerLi.innerHTML = '';
+
+  const labelIn = document.createElement('input');
+  labelIn.className = 'tree-quick-label'; labelIn.placeholder = 'label'; labelIn.spellcheck = false;
+
+  const urlIn = document.createElement('input');
+  urlIn.className = 'tree-quick-url'; urlIn.placeholder = 'url'; urlIn.spellcheck = false;
+
+  const confirm = () => {
+    const label = labelIn.value.trim();
+    let url = urlIn.value.trim();
+    if (!label || !url) { render(); return; }
+    if (!url.includes('://')) url = 'https://' + url;
+    tree.links.push({ id: uid(), label, url });
+    save(); render();
+  };
+
+  labelIn.addEventListener('keydown', e => {
+    if (e.key === 'Enter') urlIn.focus();
+    if (e.key === 'Escape') render();
+  });
+  urlIn.addEventListener('keydown', e => {
+    if (e.key === 'Enter') confirm();
+    if (e.key === 'Escape') render();
+  });
+
+  triggerLi.appendChild(labelIn);
+  triggerLi.appendChild(urlIn);
+  setTimeout(() => labelIn.focus(), 0);
+}
+
+// ── RENDER MAIN PAGE ─────────────────────────────────────────
+function render() {
+  const pg = currentPage();
+  document.documentElement.style.setProperty('--gcols', pg.grid?.cols ?? 3);
+
+  const cols = document.getElementById('columns');
+  cols.innerHTML = '';
+  pg.trees.forEach(tree => {
+    const block = document.createElement('div');
+    block.className = 'tree-block';
+    const ul = document.createElement('ul');
+    const catLi = document.createElement('li');
+    catLi.className = 'cat';
+
+    const span = document.createElement('span');
+    span.appendChild(document.createTextNode(tree.name + '/'));
+    if (tree.pluginUrl !== undefined) {
+      const dot = document.createElement('span');
+      dot.className = 'plugin-dot'; dot.textContent = '⟳';
+      span.appendChild(dot);
+    }
+    catLi.appendChild(span);
+
+    const inner = document.createElement('ul');
+    const isPlugin = tree.pluginUrl !== undefined;
+    const cached   = isPlugin ? pluginCache[tree.id] : null;
+    const links    = isPlugin ? (Array.isArray(cached) ? cached : []) : tree.links;
+
+    if (isPlugin && !Array.isArray(cached)) {
+      const li = document.createElement('li');
+      const s  = document.createElement('span');
+      s.className = 'tree-link-dim';
+      s.textContent = cached === 'loading' ? 'loading…' : cached === 'error' ? 'failed to load' : '…';
+      li.appendChild(s); inner.appendChild(li);
+    } else {
+      links.forEach(link => {
+        const li = document.createElement('li');
+        const a  = document.createElement('a');
+        a.href = link.url; a.textContent = link.label;
+        a.target = link.url.startsWith('http') ? '_blank' : '_self';
+        li.appendChild(a); inner.appendChild(li);
+      });
+
+      if (!isPlugin) {
+        const triggerLi = document.createElement('li');
+        triggerLi.className = 'tree-quick-trigger';
+        const addA = document.createElement('a');
+        addA.href = '#'; addA.className = 'tree-quick-btn'; addA.textContent = '+ add';
+        addA.addEventListener('click', e => { e.preventDefault(); showQuickAdd(triggerLi, tree); });
+        triggerLi.appendChild(addA);
+        inner.appendChild(triggerLi);
+      }
+    }
+
+    catLi.appendChild(inner);
+    ul.appendChild(catLi);
+    block.appendChild(ul);
+    cols.appendChild(block);
+  });
+}
+
+function updatePageIndicator() {
+  const el = document.getElementById('page-indicator');
+  if (cfg.pages.length <= 1) { el.style.display = 'none'; }
+  else { el.style.display = ''; el.textContent = (cfg.activePage + 1) + ' / ' + cfg.pages.length; }
+}
+
+// ── PAGE SWITCHING ────────────────────────────────────────────
+function switchPage(delta) {
+  const total = cfg.pages.length;
+  if (total <= 1) return;
+  const next = ((cfg.activePage + delta) % total + total) % total;
+  if (next === cfg.activePage) return;
+
+  cfg.activePage = next;
+  save();
+
+  const el = document.getElementById('main-container');
+  el.style.transition = 'opacity 0.12s ease, transform 0.12s ease';
+  el.style.opacity = '0';
+  el.style.transform = delta > 0 ? 'translateX(-18px)' : 'translateX(18px)';
+
+  setTimeout(() => {
+    render(); applyColors(); updatePageIndicator(); loadPluginsForPage();
+    el.style.transition = 'none';
+    el.style.transform = delta > 0 ? 'translateX(18px)' : 'translateX(-18px)';
+    el.style.opacity = '0';
+    el.offsetWidth;
+    el.style.transition = 'opacity 0.15s ease, transform 0.15s ease';
+    el.style.transform = ''; el.style.opacity = '';
+  }, 120);
+}
+
+function refreshSettingsForPage() {
+  document.getElementById('val-cols').textContent = currentPage().grid?.cols ?? 3;
+  document.getElementById('val-rows').textContent = currentPage().grid?.rows ?? 2;
+  updateThemeLabel();
+  buildColorGrids();
+  renderSettings();
+  renderPageSection();
+}
+
+// ── SETTINGS OPEN/CLOSE ───────────────────────────────────────
+function openSettings() {
+  document.getElementById('s-overlay').classList.add('on');
+  document.getElementById('s-panel').classList.add('on');
+  document.getElementById('val-cols').textContent = currentPage().grid?.cols ?? 3;
+  document.getElementById('val-rows').textContent = currentPage().grid?.rows ?? 2;
+  updateThemeLabel();
+  renderPageSection();
+  renderSearchSection();
+  buildColorGrids();
+  renderSettings();
+}
+
+function closeSettings() {
+  document.getElementById('s-overlay').classList.remove('on');
+  document.getElementById('s-panel').classList.remove('on');
+}
+
+function switchSettingsTab(name) {
+  ['links', 'page', 'search'].forEach(t => {
+    document.getElementById('s-tab-btn-' + t).classList.toggle('active', t === name);
+    document.getElementById('s-panel-' + t).classList.toggle('active', t === name);
+  });
+}
+
+// ── PAGES SECTION IN SETTINGS ─────────────────────────────────
+function renderPageSection() {
+  const sec = document.getElementById('s-pages-section');
+  sec.innerHTML = '';
+  const label = document.createElement('div');
+  label.className = 's-sec-label'; label.textContent = 'pages';
+  sec.appendChild(label);
+
+  const tabs = document.createElement('div');
+  tabs.className = 's-page-tabs';
+
+  cfg.pages.forEach((page, i) => {
+    const tab = document.createElement('div');
+    tab.className = 's-page-tab' + (i === cfg.activePage ? ' active' : '');
+
+    if (i === cfg.activePage) {
+      const nameIn = document.createElement('input');
+      nameIn.type = 'text'; nameIn.className = 's-page-tab-name';
+      nameIn.value = page.name; nameIn.spellcheck = false;
+      nameIn.addEventListener('input', () => { page.name = nameIn.value; save(); });
+      tab.appendChild(nameIn);
+    } else {
+      const nameSpan = document.createElement('span');
+      nameSpan.className = 's-page-tab-name'; nameSpan.textContent = page.name;
+      tab.appendChild(nameSpan);
+      tab.addEventListener('click', () => switchPageInSettings(i));
+    }
+
+    if (cfg.pages.length > 1) {
+      const del = document.createElement('button');
+      del.className = 's-page-tab-del'; del.textContent = '✕'; del.title = 'delete page';
+      del.addEventListener('click', e => {
+        e.stopPropagation();
+        if (cfg.pages.length === 1) return;
+        cfg.pages.splice(i, 1);
+        if (cfg.activePage >= cfg.pages.length) cfg.activePage = cfg.pages.length - 1;
+        save(); render(); applyColors(); updatePageIndicator(); refreshSettingsForPage();
+      });
+      tab.appendChild(del);
+    }
+    tabs.appendChild(tab);
+  });
+
+  const addBtn = document.createElement('button');
+  addBtn.className = 's-add-page-btn'; addBtn.textContent = '+'; addBtn.title = 'add page';
+  addBtn.addEventListener('click', addPage);
+  tabs.appendChild(addBtn);
+  sec.appendChild(tabs);
+}
+
+function switchPageInSettings(i) {
+  cfg.activePage = i;
+  save(); render(); applyColors(); updatePageIndicator(); loadPluginsForPage(); refreshSettingsForPage();
+}
+
+function addPage() {
+  const pg = {
+    id: uid(), name: 'page ' + (cfg.pages.length + 1), theme: 'gruvbox',
+    grid: { cols: 3, rows: 2 },
+    colors: deep(GRUVBOX),
+    trees: [{ id: uid(), name: 'links', links: [] }]
+  };
+  cfg.pages.push(pg);
+  cfg.activePage = cfg.pages.length - 1;
+  save(); render(); applyColors(); updatePageIndicator(); refreshSettingsForPage();
+}
+
+// ── GRID ──────────────────────────────────────────────────────
+function stepGrid(dim, delta) {
+  const pg = currentPage();
+  if (!pg.grid) pg.grid = { cols: 3, rows: 2 };
+  pg.grid[dim] = Math.max(1, (pg.grid[dim] || 1) + delta);
+  document.getElementById('val-' + dim).textContent = pg.grid[dim];
+  save();
+  if (dim === 'cols') render();
+}
+
+// ── RENDER SETTINGS TREES ─────────────────────────────────────
+function renderSettings() {
+  const body = document.getElementById('s-body');
+  body.innerHTML = '';
+  currentPage().trees.forEach(tree => body.appendChild(buildTreeCard(tree)));
+  const btn = document.createElement('button');
+  btn.className = 's-add-tree-btn'; btn.textContent = '+ new tree';
+  btn.addEventListener('click', addTree);
+  body.appendChild(btn);
+}
+
+function buildTreeCard(tree) {
+  const card = document.createElement('div');
+  card.className = 's-tree'; card.dataset.tid = tree.id;
+
+  const head = document.createElement('div');
+  head.className = 's-tree-head';
+  const handle = document.createElement('span');
+  handle.className = 'drag-handle'; handle.textContent = '⠿'; handle.title = 'drag to reorder';
+  const nameIn = document.createElement('input');
+  nameIn.className = 's-tree-name'; nameIn.type = 'text';
+  nameIn.value = tree.name; nameIn.spellcheck = false;
+  nameIn.addEventListener('input', () => { tree.name = nameIn.value; save(); render(); });
+  const slash = document.createElement('span');
+  slash.className = 's-tree-slash'; slash.textContent = '/';
+
+  const plugBtn = document.createElement('button');
+  plugBtn.className = 's-plugin-toggle' + (tree.pluginUrl !== undefined ? ' on' : '');
+  plugBtn.textContent = '⊞';
+  plugBtn.title = tree.pluginUrl !== undefined ? 'plugin mode — click to disable' : 'enable plugin mode';
+  plugBtn.addEventListener('click', () => {
+    if (tree.pluginUrl !== undefined) {
+      delete tree.pluginUrl; delete tree.pluginRefreshMs;
+      delete pluginCache[tree.id];
+      if (pluginTimers[tree.id]) { clearInterval(pluginTimers[tree.id]); delete pluginTimers[tree.id]; }
+      if (!tree.links) tree.links = [];
+    } else {
+      tree.pluginUrl = ''; tree.pluginRefreshMs = 0;
+      if (!tree.links) tree.links = [];
+    }
+    save(); render(); renderSettings();
+  });
+
+  const del = document.createElement('button');
+  del.className = 's-tree-del'; del.textContent = '✕'; del.title = 'delete tree';
+  del.addEventListener('click', () => {
+    const pg = currentPage();
+    if (pg.trees.length === 1) return;
+    pg.trees = pg.trees.filter(t => t.id !== tree.id);
+    if (pluginTimers[tree.id]) { clearInterval(pluginTimers[tree.id]); delete pluginTimers[tree.id]; }
+    delete pluginCache[tree.id];
+    save(); render(); renderSettings();
+  });
+  head.append(handle, nameIn, slash, plugBtn, del);
+  card.appendChild(head);
+
+  if (tree.pluginUrl !== undefined) {
+    const plugBody = document.createElement('div');
+    plugBody.className = 's-plugin-body';
+
+    const urlRow = document.createElement('div');
+    urlRow.className = 's-plugin-row';
+    const urlLabel = document.createElement('span');
+    urlLabel.className = 's-plugin-label'; urlLabel.textContent = 'url';
+    const urlIn = document.createElement('input');
+    urlIn.className = 's-plugin-url'; urlIn.type = 'text';
+    urlIn.value = tree.pluginUrl || ''; urlIn.spellcheck = false;
+    urlIn.placeholder = 'http://localhost:6969/api/plugin/...';
+    urlIn.addEventListener('change', () => {
+      tree.pluginUrl = urlIn.value.trim(); save();
+      if (tree.pluginUrl) schedulePlugin(tree);
+      else { delete pluginCache[tree.id]; render(); }
+    });
+    urlRow.append(urlLabel, urlIn);
+
+    const refreshRow = document.createElement('div');
+    refreshRow.className = 's-plugin-row';
+    const refreshLabel = document.createElement('span');
+    refreshLabel.className = 's-plugin-label'; refreshLabel.textContent = 'refresh';
+    const secsIn = document.createElement('input');
+    secsIn.className = 's-plugin-secs'; secsIn.type = 'number'; secsIn.min = '0';
+    secsIn.value = tree.pluginRefreshMs ? Math.round(tree.pluginRefreshMs / 1000) : 0;
+    secsIn.addEventListener('change', () => {
+      const secs = Math.max(0, parseInt(secsIn.value) || 0);
+      secsIn.value = secs; tree.pluginRefreshMs = secs * 1000; save();
+      schedulePlugin(tree);
+    });
+    const hint = document.createElement('span');
+    hint.className = 's-plugin-hint'; hint.textContent = 's  (0 = load only)';
+    refreshRow.append(refreshLabel, secsIn, hint);
+
+    const fetchBtn = document.createElement('button');
+    fetchBtn.className = 's-plugin-fetch'; fetchBtn.textContent = '↻ fetch now';
+    fetchBtn.addEventListener('click', () => { if (tree.pluginUrl) fetchPluginTree(tree); });
+
+    const optsBtn = document.createElement('button');
+    optsBtn.className = 's-plugin-fetch'; optsBtn.textContent = '⚙ options';
+    optsBtn.style.marginLeft = '8px';
+    optsBtn.addEventListener('click', async () => {
+      const iid = tree.pluginUrl?.split('/api/plugin/')[1]?.split('?')[0];
+      if (!iid) return;
+      try {
+        const inst = await (await fetch(`${PLUGIN_SERVER}/api/plugin/instance/${iid}`)).json();
+        if (inst.error) { showToast('not an instance plugin'); return; }
+        const schema  = inst.schema || {};
+        const options = schema.options || {};
+        if (!Object.keys(options).length) { showToast('no options for this plugin'); return; }
+
+        // Inject current values
+        const currentOpts = inst.options || {};
+
+        // For dynamic multiselects, fetch preview to get choices
+        if (schema.multi_tree) {
+          try {
+            showToast('fetching…');
+            const pr = await fetch(`${PLUGIN_SERVER}/api/plugin/${inst.plugin}?refresh=true`);
+            const pd = await pr.json();
+            if (pd.trees) {
+              Object.values(options).forEach(def => {
+                if (def.type === 'multiselect' && def.dynamic) def._choices = pd.trees;
+              });
+            }
+          } catch {}
+        }
+
+        showOptionsModal(tree.name, options, currentOpts, 'save', async (newOpts) => {
+          await fetch(`${PLUGIN_SERVER}/api/plugin/instance/${iid}`, {
+            method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ options: newOpts }),
+          });
+          // Re-fetch all trees that share this instance URL
+          currentPage().trees
+            .filter(t => t.pluginUrl === tree.pluginUrl)
+            .forEach(t => schedulePlugin(t));
+          showToast('options saved');
+        });
+      } catch (e) { showToast('could not load options'); }
+    });
+
+    plugBody.append(urlRow, refreshRow, fetchBtn, optsBtn);
+    card.appendChild(plugBody);
+  } else {
+    const linksEl = document.createElement('div');
+    linksEl.className = 's-links'; linksEl.dataset.tid = tree.id;
+    tree.links.forEach(link => linksEl.appendChild(buildLinkRow(tree, link)));
+
+    const addBtn = document.createElement('button');
+    addBtn.className = 's-add-link-btn'; addBtn.textContent = '+ add link';
+    addBtn.addEventListener('click', () => {
+      const nl = { id: uid(), label: 'new link', url: 'https://' };
+      tree.links.push(nl); save(); render();
+      linksEl.insertBefore(buildLinkRow(tree, nl), addBtn);
+      linksEl.querySelector(`[data-lid="${nl.id}"] .s-link-label`)?.focus();
+    });
+    linksEl.appendChild(addBtn);
+    card.appendChild(linksEl);
+  }
+
+  card.draggable = true;
+  card.addEventListener('dragstart', e => {
+    dragState = { type: 'tree', tid: tree.id };
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', tree.id);
+    setTimeout(() => card.style.opacity = '0.4', 0);
+  });
+  card.addEventListener('dragend', () => { card.style.opacity = ''; clearDropIndicators(); });
+  card.addEventListener('dragover', e => {
+    if (!dragState || dragState.type !== 'tree' || dragState.tid === tree.id) return;
+    e.preventDefault(); clearDropIndicators();
+    const mid = card.getBoundingClientRect().top + card.getBoundingClientRect().height / 2;
+    card.classList.add(e.clientY < mid ? 'drop-before' : 'drop-after');
+    dropTarget = { tid: tree.id, before: e.clientY < mid };
+  });
+  card.addEventListener('dragleave', e => {
+    if (!card.contains(e.relatedTarget)) card.classList.remove('drop-before','drop-after');
+  });
+  card.addEventListener('drop', e => {
+    e.preventDefault();
+    if (!dragState || dragState.type !== 'tree' || !dropTarget) return;
+    const pg = currentPage();
+    const fi = pg.trees.findIndex(t => t.id === dragState.tid);
+    const ti = pg.trees.findIndex(t => t.id === dropTarget.tid);
+    if (fi < 0 || ti < 0 || fi === ti) return;
+    const [moved] = pg.trees.splice(fi, 1);
+    const ins = dropTarget.before ? ti : ti + 1;
+    pg.trees.splice(ins > fi ? ins - 1 : ins, 0, moved);
+    save(); render(); renderSettings();
+    dragState = null; dropTarget = null;
+  });
+  return card;
+}
+
+function buildLinkRow(tree, link) {
+  const row = document.createElement('div');
+  row.className = 's-link'; row.dataset.lid = link.id;
+
+  const handle = document.createElement('span');
+  handle.className = 'link-handle'; handle.textContent = '⠿';
+
+  const labelIn = document.createElement('input');
+  labelIn.className = 's-link-label'; labelIn.type = 'text';
+  labelIn.value = link.label; labelIn.spellcheck = false; labelIn.placeholder = 'label';
+  labelIn.addEventListener('input', () => { link.label = labelIn.value; save(); render(); });
+
+  const urlIn = document.createElement('input');
+  urlIn.className = 's-link-url'; urlIn.type = 'text';
+  urlIn.value = link.url; urlIn.spellcheck = false; urlIn.placeholder = 'https://';
+  urlIn.addEventListener('input', () => { link.url = urlIn.value; save(); render(); });
+
+  const del = document.createElement('button');
+  del.className = 's-link-del'; del.textContent = '✕';
+  del.addEventListener('click', () => { tree.links = tree.links.filter(l => l.id !== link.id); save(); render(); row.remove(); });
+
+  row.append(handle, labelIn, urlIn, del);
+
+  row.draggable = true;
+  row.addEventListener('dragstart', e => {
+    dragState = { type: 'link', tid: tree.id, lid: link.id };
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', link.id);
+    e.stopPropagation();
+    setTimeout(() => row.style.opacity = '0.4', 0);
+  });
+  row.addEventListener('dragend', () => { row.style.opacity = ''; clearDropIndicators(); });
+  row.addEventListener('dragover', e => {
+    if (!dragState || dragState.type !== 'link' || dragState.lid === link.id) return;
+    e.preventDefault(); e.stopPropagation();
+    clearLinkDropIndicators();
+    const mid = row.getBoundingClientRect().top + row.getBoundingClientRect().height / 2;
+    row.classList.add(e.clientY < mid ? 'drop-before' : 'drop-after');
+    dropTarget = { tid: tree.id, lid: link.id, before: e.clientY < mid };
+  });
+  row.addEventListener('dragleave', e => {
+    if (!row.contains(e.relatedTarget)) row.classList.remove('drop-before','drop-after');
+  });
+  row.addEventListener('drop', e => {
+    e.preventDefault(); e.stopPropagation();
+    if (!dragState || dragState.type !== 'link' || !dropTarget) return;
+    const pg = currentPage();
+    const src = pg.trees.find(t => t.id === dragState.tid);
+    const dst = pg.trees.find(t => t.id === dropTarget.tid);
+    if (!src || !dst) return;
+    const fi = src.links.findIndex(l => l.id === dragState.lid);
+    if (fi < 0) return;
+    const [moved] = src.links.splice(fi, 1);
+    const ti = dst.links.findIndex(l => l.id === dropTarget.lid);
+    const ins = dropTarget.before ? ti : ti + 1;
+    dst.links.splice(Math.max(0, src === dst && fi < ti ? ins - 1 : ins), 0, moved);
+    save(); render(); renderSettings();
+    dragState = null; dropTarget = null;
+  });
+
+  return row;
+}
+
+let dragState = null, dropTarget = null;
+
+// ── PLUGIN RUNTIME ────────────────────────────────────────────
+const pluginCache  = {}; // treeId → [{label,url}] | 'loading' | 'error'
+const pluginTimers = {}; // treeId → intervalId
+
+async function fetchPluginTree(tree) {
+  pluginCache[tree.id] = 'loading';
+  render();
+  try {
+    const r    = await fetch(tree.pluginUrl);
+    const data = await r.json();
+
+    if (data.trees && !data.preview) {
+      // Multi-tree response: update ALL trees on this page that share the same pluginUrl
+      const norm = l => ({ label: String(l.label||l.title||l.name||''), url: String(l.url||l.href||'') });
+      currentPage().trees.forEach(t => {
+        if (t.pluginUrl !== tree.pluginUrl) return;
+        const match = data.trees.find(dt => (dt.id || dt.name) === (t.pluginTreeName || t.name));
+        pluginCache[t.id] = match ? match.links.map(norm) : [];
+      });
+    } else {
+      const raw = Array.isArray(data) ? data : (Array.isArray(data.links) ? data.links : []);
+      pluginCache[tree.id] = raw.map(l => ({
+        label: String(l.label || l.title || l.name || ''),
+        url:   String(l.url   || l.href  || ''),
+      }));
+    }
+  } catch {
+    pluginCache[tree.id] = 'error';
+  }
+  render();
+}
+
+function schedulePlugin(tree) {
+  if (pluginTimers[tree.id]) { clearInterval(pluginTimers[tree.id]); delete pluginTimers[tree.id]; }
+  if (!tree.pluginUrl) return;
+  fetchPluginTree(tree);
+  if (tree.pluginRefreshMs > 0) {
+    pluginTimers[tree.id] = setInterval(() => fetchPluginTree(tree), tree.pluginRefreshMs);
+  }
+}
+
+function loadPluginsForPage() {
+  Object.keys(pluginTimers).forEach(id => { clearInterval(pluginTimers[id]); delete pluginTimers[id]; });
+  currentPage().trees.forEach(tree => { if (tree.pluginUrl) schedulePlugin(tree); });
+}
+function clearDropIndicators() {
+  document.querySelectorAll('.s-tree').forEach(el => el.classList.remove('drop-before','drop-after'));
+}
+function clearLinkDropIndicators() {
+  document.querySelectorAll('.s-link').forEach(el => el.classList.remove('drop-before','drop-after'));
+}
+
+function addTree() {
+  const t = { id: uid(), name: 'new tree', links: [] };
+  currentPage().trees.push(t);
+  save(); render(); renderSettings();
+  const body = document.getElementById('s-body');
+  const card = body.querySelector(`[data-tid="${t.id}"]`);
+  card?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  setTimeout(() => card?.querySelector('.s-tree-name')?.focus(), 50);
+}
+
+// ── KEYBOARD ──────────────────────────────────────────────────
+document.addEventListener('keydown', e => {
+  if (isSettingsOpen()) return;
+  if (document.activeElement !== document.body) return;
+  if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
+    e.preventDefault();
+    switchPage(e.key === 'ArrowRight' ? 1 : -1);
+  }
+});
+
+// ── TOAST ─────────────────────────────────────────────────────
+let toastTimer = null;
+function showToast(msg) {
+  const el = document.getElementById('hb-toast');
+  el.textContent = msg;
+  el.classList.add('on');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.classList.remove('on'), 2500);
+}
+
+// ── PLUGIN FILE DROP ──────────────────────────────────────────
+const PLUGIN_SERVER = 'http://localhost:6969';
+let fileDragCount = 0;
+let activeDropZone = 'center';
+
+function updateDropZoneLabels() {
+  const total = cfg.pages.length;
+  const curr  = cfg.activePage;
+  const prev  = (curr - 1 + total) % total;
+  const isLast = curr === total - 1;
+  document.getElementById('dz-left-name').textContent   = cfg.pages[prev].name;
+  document.getElementById('dz-center-name').textContent = cfg.pages[curr].name;
+  document.getElementById('dz-right-name').textContent  = isLast ? 'new page' : cfg.pages[curr + 1].name;
+  document.getElementById('dz-right-arrow').textContent = isLast ? '+' : '→';
+  // dim left zone if only 1 page (wraps to self — not very useful)
+  document.getElementById('dz-left').classList.toggle('dz-dim', total === 1);
+}
+
+function setActiveDropZone(zone) {
+  if (zone === activeDropZone) return;
+  activeDropZone = zone;
+  document.querySelectorAll('.dz').forEach(el => el.classList.remove('dz-active'));
+  document.getElementById('dz-' + zone).classList.add('dz-active');
+}
+
+function hideDropOverlay() {
+  fileDragCount = 0;
+  activeDropZone = 'center';
+  document.getElementById('drop-overlay').classList.remove('on');
+  document.querySelectorAll('.dz').forEach(el => el.classList.remove('dz-active'));
+}
+
+window.addEventListener('dragenter', e => {
+  if (!e.dataTransfer.types.includes('Files')) return;
+  fileDragCount++;
+  if (fileDragCount === 1) {
+    updateDropZoneLabels();
+    activeDropZone = 'center';
+    document.getElementById('dz-center').classList.add('dz-active');
+    document.getElementById('drop-overlay').classList.add('on');
+  }
+});
+
+window.addEventListener('dragleave', () => {
+  fileDragCount = Math.max(0, fileDragCount - 1);
+  if (fileDragCount === 0) hideDropOverlay();
+});
+
+window.addEventListener('dragover', e => {
+  if (!e.dataTransfer.types.includes('Files')) return;
+  e.preventDefault();
+  const x = e.clientX / window.innerWidth;
+  setActiveDropZone(x < 0.33 ? 'left' : x < 0.67 ? 'center' : 'right');
+});
+
+window.addEventListener('drop', e => {
+  if (!e.dataTransfer.types.includes('Files')) return;
+  e.preventDefault();
+  const zone = activeDropZone;
+  hideDropOverlay();
+
+  const file = e.dataTransfer.files[0];
+  if (!file || (!file.name.endsWith('.json') && !file.name.endsWith('.py'))) {
+    showToast('drop a .json or .py plugin file');
+    return;
+  }
+
+  // Resolve target page index
+  const total = cfg.pages.length;
+  const curr  = cfg.activePage;
+  let targetIdx;
+  if (zone === 'left') {
+    targetIdx = (curr - 1 + total) % total;
+  } else if (zone === 'right') {
+    targetIdx = curr === total - 1 ? createPageAtEnd() : curr + 1;
+  } else {
+    targetIdx = curr;
+  }
+
+  installPluginFile(file, targetIdx);
+});
+
+function createPageAtEnd() {
+  const pg = {
+    id: uid(), name: 'page ' + (cfg.pages.length + 1),
+    theme: currentPage().theme || 'gruvbox',
+    grid: { cols: 3, rows: 2 },
+    colors: deep(currentPage().colors),
+    trees: [],
+  };
+  cfg.pages.push(pg);
+  save(); updatePageIndicator();
+  return cfg.pages.length - 1;
+}
+
+// ── CREDENTIAL PARSING ────────────────────────────────────────
+
+function parseScriptCredentials(text) {
+  // Match CREDENTIALS = { "KEY": "description", ... }
+  const match = text.match(/CREDENTIALS\s*=\s*\{([^}]+)\}/s);
+  if (!match) return {};
+  const creds = {};
+  const re = /["'](\w+)["']\s*:\s*["']([^"']*?)["']/g;
+  let m;
+  while ((m = re.exec(match[1])) !== null) creds[m[1]] = m[2];
+  return creds;
+}
+
+function parseJsonCredentials(text, def) {
+  // Explicit credentials key takes priority
+  if (def.credentials && typeof def.credentials === 'object') return def.credentials;
+  // Scan for {{KEY}} placeholders in the JSON text
+  const creds = {};
+  const re = /\{\{(\w+)\}\}/g;
+  let m;
+  while ((m = re.exec(text)) !== null) if (!creds[m[1]]) creds[m[1]] = m[1];
+  return creds;
+}
+
+// ── CREDENTIAL MODAL ──────────────────────────────────────────
+
+let _credCallback = null;
+
+function showCredModal(pluginName, credDefs, onInstall) {
+  _credCallback = onInstall;
+  const body = document.getElementById('cred-body');
+  body.innerHTML = '';
+
+  const nameEl = document.createElement('div');
+  nameEl.className = 'cred-plugin-name';
+  nameEl.textContent = pluginName;
+  body.appendChild(nameEl);
+
+  const div = document.createElement('div');
+  div.className = 'cred-divider';
+  div.textContent = '── credentials needed ──';
+  body.appendChild(div);
+
+  const inputs = {};
+  Object.entries(credDefs).forEach(([key, desc]) => {
+    const field = document.createElement('div');
+    field.className = 'cred-field';
+    const kEl = document.createElement('div');
+    kEl.className = 'cred-field-name'; kEl.textContent = key;
+    const dEl = document.createElement('div');
+    dEl.className = 'cred-field-desc'; dEl.textContent = desc;
+    const inp = document.createElement('input');
+    inp.type = 'text'; inp.spellcheck = false; inp.placeholder = 'paste key here…';
+    inp.addEventListener('keydown', e => { if (e.key === 'Enter') document.getElementById('cred-ok').click(); });
+    inputs[key] = inp;
+    field.append(kEl, dEl, inp);
+    body.appendChild(field);
+  });
+
+  document.getElementById('cred-modal')._inputs = inputs;
+  document.getElementById('cred-overlay').classList.add('on');
+  setTimeout(() => Object.values(inputs)[0]?.focus(), 60);
+}
+
+function closeCredModal() {
+  document.getElementById('cred-overlay').classList.remove('on');
+  _credCallback = null;
+}
+
+document.getElementById('cred-close').addEventListener('click', closeCredModal);
+document.getElementById('cred-cancel').addEventListener('click', closeCredModal);
+document.getElementById('cred-overlay').addEventListener('click', e => {
+  if (e.target === document.getElementById('cred-overlay')) closeCredModal();
+});
+document.getElementById('cred-ok').addEventListener('click', () => {
+  if (!_credCallback) return;
+  const creds = {};
+  const inputs = document.getElementById('cred-modal')._inputs || {};
+  Object.entries(inputs).forEach(([k, el]) => { creds[k] = el.value.trim(); });
+  const cb = _credCallback;
+  closeCredModal();
+  cb(creds);
+});
+
+// ── OPTIONS MODAL ─────────────────────────────────────────────
+
+let _optsCb = null;
+
+function renderControl(key, def, values) {
+  const row  = document.createElement('div');
+  row.className = 'opts-row';
+  const lbl  = document.createElement('span');
+  lbl.className = 'opts-label'; lbl.textContent = def.label || key;
+  row.appendChild(lbl);
+
+  let getValue;
+
+  if (def.type === 'select') {
+    const sel = document.createElement('select');
+    sel.className = 'opts-select';
+    (def.choices || []).forEach(c => {
+      const opt = document.createElement('option');
+      opt.value = c; opt.textContent = c;
+      if (c === (values[key] ?? def.default)) opt.selected = true;
+      sel.appendChild(opt);
+    });
+    row.appendChild(sel);
+    getValue = () => sel.value;
+
+  } else if (def.type === 'number') {
+    let val = Number(values[key] ?? def.default ?? 0);
+    const min = def.min ?? 0; const max = def.max ?? 999;
+    const wrap = document.createElement('div'); wrap.className = 'opts-num-row';
+    const dec  = document.createElement('button'); dec.className = 'opts-stepper'; dec.textContent = '−';
+    const span = document.createElement('span');  span.className = 'opts-num-val'; span.textContent = val;
+    const inc  = document.createElement('button'); inc.className = 'opts-stepper'; inc.textContent = '+';
+    dec.addEventListener('click', () => { val = Math.max(min, val - 1); span.textContent = val; });
+    inc.addEventListener('click', () => { val = Math.min(max, val + 1); span.textContent = val; });
+    wrap.append(dec, span, inc);
+    row.appendChild(wrap);
+    getValue = () => val;
+
+  } else if (def.type === 'toggle') {
+    const btn = document.createElement('button');
+    btn.className = 'opts-toggle' + ((values[key] ?? def.default) ? ' on' : '');
+    btn.addEventListener('click', () => btn.classList.toggle('on'));
+    row.appendChild(btn);
+    getValue = () => btn.classList.contains('on');
+
+  } else if (def.type === 'multiselect') {
+    // Full-width column layout with scrollable checkbox list
+    row.className += ' opts-multiselect-wrap';
+
+    // select all / none bar
+    const bar = document.createElement('div');
+    bar.style.cssText = 'display:flex;gap:8px;align-items:center;width:100%';
+    const allBtn  = document.createElement('button');
+    const noneBtn = document.createElement('button');
+    [allBtn, noneBtn].forEach(b => {
+      b.className = 's-plugin-fetch'; b.style.cssText = 'padding:1px 6px;font-size:10px';
+    });
+    allBtn.textContent = 'all'; noneBtn.textContent = 'none';
+
+    const list = document.createElement('div');
+    list.className = 'opts-multiselect-list';
+    const current = values[key] ?? def.default ?? [];
+    (def._choices || []).forEach(c => {
+      const id   = String(c.id ?? c.name ?? c);
+      const item = document.createElement('label');
+      item.className = 'pick-item';
+      const chk  = document.createElement('input');
+      chk.type = 'checkbox'; chk.className = 'pick-check'; chk.value = id;
+      chk.checked = current.includes(id);
+      const nm   = document.createElement('span'); nm.className = 'pick-name'; nm.textContent = c.name ?? id;
+      const cnt  = document.createElement('span'); cnt.className = 'pick-count';
+      cnt.textContent = c.count != null ? `${c.count} items` : '';
+      item.append(chk, nm, cnt);
+      list.appendChild(item);
+    });
+
+    allBtn.addEventListener('click',  () => list.querySelectorAll('.pick-check').forEach(c => c.checked = true));
+    noneBtn.addEventListener('click', () => list.querySelectorAll('.pick-check').forEach(c => c.checked = false));
+    bar.append(allBtn, noneBtn);
+    row.append(bar, list);
+    getValue = () => [...list.querySelectorAll('.pick-check:checked')].map(c => c.value);
+
+  } else {
+    const inp = document.createElement('input');
+    inp.className = 'opts-text'; inp.type = 'text'; inp.spellcheck = false;
+    inp.value = String(values[key] ?? def.default ?? '');
+    row.appendChild(inp);
+    getValue = () => inp.value.trim();
+  }
+
+  row._getValue = getValue;
+  row._key      = key;
+  return row;
+}
+
+function showOptionsModal(pluginName, schema, currentValues, okLabel, onConfirm) {
+  const body = document.getElementById('opts-body');
+  body.innerHTML = '';
+
+  const nameEl = document.createElement('div');
+  nameEl.className = 'opts-plugin-name'; nameEl.textContent = pluginName;
+  body.appendChild(nameEl);
+
+  const rows = [];
+  Object.entries(schema).forEach(([key, def]) => {
+    const row = renderControl(key, def, currentValues);
+    rows.push(row);
+    body.appendChild(row);
+  });
+
+  document.getElementById('opts-ok').textContent = okLabel || 'create tree';
+  _optsCb = () => {
+    const values = {};
+    rows.forEach(r => { values[r._key] = r._getValue(); });
+    onConfirm(values);
+  };
+  document.getElementById('opts-overlay').classList.add('on');
+}
+
+function closeOptsModal() {
+  document.getElementById('opts-overlay').classList.remove('on');
+  _optsCb = null;
+}
+document.getElementById('opts-close').addEventListener('click', closeOptsModal);
+document.getElementById('opts-cancel').addEventListener('click', closeOptsModal);
+document.getElementById('opts-overlay').addEventListener('click', e => {
+  if (e.target === document.getElementById('opts-overlay')) closeOptsModal();
+});
+document.getElementById('opts-ok').addEventListener('click', () => {
+  if (_optsCb) { const cb = _optsCb; closeOptsModal(); cb(); }
+});
+
+// ── PICKER MODAL ──────────────────────────────────────────────
+
+let _pickCb = null;
+
+function showPickerModal(pluginName, trees, onConfirm) {
+  _pickCb = onConfirm;
+  document.getElementById('pick-title').textContent = pluginName + ' — pick collections';
+  const body = document.getElementById('pick-body');
+  body.innerHTML = '';
+
+  trees.forEach(tree => {
+    const item  = document.createElement('label');
+    item.className = 'pick-item';
+    const chk   = document.createElement('input');
+    chk.type = 'checkbox'; chk.className = 'pick-check'; chk.value = tree.id || tree.name;
+    chk.checked = true;
+    const name  = document.createElement('span'); name.className = 'pick-name'; name.textContent = tree.name;
+    const count = document.createElement('span'); count.className = 'pick-count';
+    count.textContent = tree.count != null ? `${tree.count} items` : '';
+    item.append(chk, name, count);
+    body.appendChild(item);
+  });
+
+  updatePickOkLabel();
+  body.querySelectorAll('.pick-check').forEach(c => c.addEventListener('change', updatePickOkLabel));
+  document.getElementById('pick-overlay').classList.add('on');
+}
+
+function updatePickOkLabel() {
+  const n = document.querySelectorAll('.pick-check:checked').length;
+  document.getElementById('pick-ok').textContent = `add ${n} tree${n !== 1 ? 's' : ''} →`;
+}
+
+function closePickerModal() {
+  document.getElementById('pick-overlay').classList.remove('on');
+  _pickCb = null;
+}
+document.getElementById('pick-close').addEventListener('click', closePickerModal);
+document.getElementById('pick-cancel').addEventListener('click', closePickerModal);
+document.getElementById('pick-overlay').addEventListener('click', e => {
+  if (e.target === document.getElementById('pick-overlay')) closePickerModal();
+});
+document.getElementById('pick-ok').addEventListener('click', () => {
+  if (!_pickCb) return;
+  const selected = [...document.querySelectorAll('.pick-check:checked')].map(c => c.value);
+  const cb = _pickCb;
+  closePickerModal();
+  cb(selected);
+});
+
+// ── PLUGIN INSTALL ─────────────────────────────────────────────
+
+async function installPluginFile(file, targetPageIdx = cfg.activePage) {
+  const text = await file.text();
+  const isPy = file.name.endsWith('.py');
+
+  if (isPy) {
+    const credDefs   = parseScriptCredentials(text);
+    const pluginName = file.name.replace(/\.py$/, '');
+
+    const afterCreds = async (creds) => {
+      const data = await uploadPluginFile(pluginName, text, 'script', creds);
+      if (!data || data.error) { showToast(`error: ${data?.error || 'upload failed'}`); return; }
+      const schema  = data.schema || {};
+      const options = schema.options || {};
+
+      // For multi_tree with dynamic fields: fetch preview first to get choices
+      let previewTrees = null;
+      if (schema.multi_tree) {
+        try {
+          showToast('fetching…');
+          const pr = await fetch(`${PLUGIN_SERVER}/api/plugin/${pluginName}?refresh=true`);
+          const pd = await pr.json();
+          if (pd.trees && pd.preview) {
+            previewTrees = pd.trees;
+            // Inject choices into any dynamic multiselect field
+            Object.values(options).forEach(def => {
+              if (def.type === 'multiselect' && def.dynamic) def._choices = previewTrees;
+            });
+          }
+        } catch { showToast('could not fetch collections'); return; }
+      }
+
+      const afterOptions = async (optValues) => {
+        await finalizeInstance(pluginName, optValues, targetPageIdx, previewTrees, schema);
+      };
+
+      if (Object.keys(options).length > 0) {
+        const okLabel = schema.multi_tree ? 'add trees →' : 'create tree';
+        showOptionsModal(pluginName, options, {}, okLabel, afterOptions);
+      } else {
+        afterOptions({});
+      }
+    };
+
+    if (Object.keys(credDefs).length > 0) showCredModal(pluginName, credDefs, afterCreds);
+    else afterCreds({});
+
+  } else {
+    // JSON declarative plugin — legacy flow
+    let def;
+    try { def = JSON.parse(text); }
+    catch { showToast('invalid JSON'); return; }
+    if (!def.name || !def.source?.url) { showToast('plugin needs name + source.url'); return; }
+    const credDefs  = parseJsonCredentials(text, def);
+    const doInstall = async (creds) => {
+      const data = await uploadPluginFile(def.name, text, 'json', creds);
+      if (!data || data.error) { showToast(`error: ${data?.error}`); return; }
+      addSingleTree(def.name, def.name, def.refreshMs || 0, targetPageIdx);
+    };
+    if (Object.keys(credDefs).length > 0) showCredModal(def.name, credDefs, doInstall);
+    else doInstall({});
+  }
+}
+
+async function uploadPluginFile(name, content, type, credentials) {
+  try {
+    const r = await fetch(`${PLUGIN_SERVER}/api/plugin/upload`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name, content, type, credentials }),
+    });
+    return await r.json();
+  } catch (e) { return { error: e.message }; }
+}
+
+async function finalizeInstance(pluginName, options, targetPageIdx, previewTrees, schema) {
+  try {
+    const r = await fetch(`${PLUGIN_SERVER}/api/plugin/instance`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ plugin: pluginName, options, display_name: pluginName }),
+    });
+    const data = await r.json();
+    if (data.error) throw new Error(data.error);
+    const iid = data.instance_id;
+    const url = `${PLUGIN_SERVER}/api/plugin/${iid}`;
+    const refreshMs = schema.refresh_ms || 0;
+
+    if (previewTrees && options.selected?.length) {
+      // Multi-tree: create one tree per selected collection
+      const selectedSet = new Set(options.selected);
+      const toAdd = previewTrees.filter(t => selectedSet.has(t.id || t.name));
+      toAdd.forEach(t => {
+        const tree = {
+          id: uid(), name: t.name, links: [],
+          pluginUrl: url, pluginTreeName: t.id || t.name, pluginRefreshMs: refreshMs,
+        };
+        cfg.pages[targetPageIdx].trees.push(tree);
+      });
+      save();
+      if (targetPageIdx === cfg.activePage) { render(); loadPluginsForPage(); }
+      const pn = cfg.pages[targetPageIdx].name;
+      showToast(`added ${toAdd.length} trees → ${pn}`);
+    } else {
+      addSingleTree(iid, pluginName, refreshMs, targetPageIdx);
+    }
+  } catch (err) { showToast(`error: ${err.message}`); }
+}
+
+function addSingleTree(pluginId, displayName, refreshMs, targetPageIdx) {
+  const tree = {
+    id: uid(), name: displayName, links: [],
+    pluginUrl: `${PLUGIN_SERVER}/api/plugin/${pluginId}`,
+    pluginRefreshMs: refreshMs,
+  };
+  cfg.pages[targetPageIdx].trees.push(tree);
+  save();
+  if (targetPageIdx === cfg.activePage) { render(); schedulePlugin(tree); }
+  const pn = cfg.pages[targetPageIdx].name;
+  showToast(targetPageIdx === cfg.activePage ? `installed: ${displayName}` : `installed: ${displayName} → ${pn}`);
+}
+
+// ── SEARCH ────────────────────────────────────────────────────
+function getActiveEngine() {
+  const id = cfg.search?.activeEngine || 'ddg';
+  return SEARCH_ENGINES.find(e => e.id === id)
+    || cfg.search?.customEngines?.find(e => e.id === id)
+    || SEARCH_ENGINES[0];
+}
+
+function doSearch(e) {
+  e.preventDefault();
+  const q = document.getElementById('search-input').value.trim();
+  if (!q) return;
+  window.location.href = getActiveEngine().url.replace('{q}', encodeURIComponent(q));
+}
+
+function renderSearchBar() {
+  const el = document.getElementById('search-engine-label');
+  if (el) el.textContent = getActiveEngine().name;
+}
+
+function setSearchEngine(id) {
+  cfg.search.activeEngine = id;
+  save(); renderSearchBar(); renderSearchSection();
+}
+
+function renderSearchSection() {
+  const sec = document.getElementById('s-search-section');
+  if (!sec) return;
+  sec.innerHTML = '';
+
+  const activeId = cfg.search?.activeEngine || 'ddg';
+  const allEngines = [
+    ...SEARCH_ENGINES.map(e => ({ ...e, custom: false })),
+    ...(cfg.search.customEngines || []).map(e => ({ ...e, custom: true })),
+  ];
+
+  allEngines.forEach(eng => {
+    const isActive = eng.id === activeId;
+    const row = document.createElement('div');
+    row.className = 's-engine-row' + (isActive ? ' active' : '');
+
+    const name = document.createElement('span');
+    name.className = 's-engine-row-name'; name.textContent = eng.name;
+
+    const url = document.createElement('span');
+    url.className = 's-engine-row-url'; url.textContent = eng.url;
+
+    row.append(name, url);
+
+    if (isActive) {
+      const dot = document.createElement('span');
+      dot.className = 's-engine-row-dot'; dot.textContent = '●';
+      row.appendChild(dot);
+    } else {
+      row.addEventListener('click', () => setSearchEngine(eng.id));
+    }
+
+    if (eng.custom) {
+      const del = document.createElement('button');
+      del.className = 's-page-tab-del'; del.textContent = '✕';
+      del.addEventListener('click', e => {
+        e.stopPropagation();
+        cfg.search.customEngines = cfg.search.customEngines.filter(c => c.id !== eng.id);
+        if (cfg.search.activeEngine === eng.id) cfg.search.activeEngine = 'ddg';
+        save(); renderSearchBar(); renderSearchSection();
+      });
+      row.appendChild(del);
+    }
+
+    sec.appendChild(row);
+  });
+
+  const addBtn = document.createElement('button');
+  addBtn.className = 's-add-tree-btn'; addBtn.textContent = '+ add custom engine';
+  addBtn.style.marginTop = '8px';
+  addBtn.addEventListener('click', () => {
+    const existing = sec.querySelector('.s-engine-form');
+    if (existing) { existing.remove(); return; }
+
+    const form = document.createElement('div');
+    form.className = 's-engine-form';
+
+    const nameIn = document.createElement('input');
+    nameIn.className = 's-engine-name-in'; nameIn.placeholder = 'name'; nameIn.spellcheck = false;
+
+    const urlIn = document.createElement('input');
+    urlIn.className = 's-engine-url-in'; urlIn.placeholder = 'https://...?q={q}'; urlIn.spellcheck = false;
+
+    const ok = document.createElement('button');
+    ok.className = 's-reset-btn'; ok.textContent = 'add';
+    ok.addEventListener('click', () => {
+      const n = nameIn.value.trim();
+      const u = urlIn.value.trim();
+      if (!n || !u) return;
+      if (!u.includes('{q}')) { urlIn.classList.add('err'); showToast('url must contain {q}'); return; }
+      cfg.search.customEngines.push({ id: 'c_' + uid(), name: n, url: u });
+      save(); renderSearchBar(); renderSearchSection();
+    });
+
+    nameIn.addEventListener('keydown', e => { if (e.key === 'Enter') urlIn.focus(); });
+    urlIn.addEventListener('keydown', e => { if (e.key === 'Enter') ok.click(); });
+    urlIn.addEventListener('input', () => urlIn.classList.remove('err'));
+
+    form.append(nameIn, urlIn, ok);
+    sec.appendChild(form);
+    nameIn.focus();
+  });
+  sec.appendChild(addBtn);
+}
+
+// ── CONFIG EXPORT / IMPORT ────────────────────────────────────
+function exportConfig() {
+  const date = new Date().toISOString().slice(0, 10);
+  const blob = new Blob([JSON.stringify(cfg, null, 2)], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `homebase-${date}.json`;
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+
+function importConfig(input) {
+  const file = input.files[0];
+  if (!file) return;
+  input.value = '';
+  const reader = new FileReader();
+  reader.onload = () => {
+    try {
+      const data = JSON.parse(reader.result);
+      if (!data.pages) { showToast('invalid backup file'); return; }
+      localStorage.setItem(STORE, reader.result);
+      cfg = load();
+      render(); applyColors(); updatePageIndicator(); loadPluginsForPage();
+      if (isSettingsOpen()) { renderPageSection(); buildColorGrids(); renderSettings(); }
+      showToast('config imported');
+    } catch { showToast('invalid JSON'); }
+  };
+  reader.readAsText(file);
+}
+
+// ── INIT ──────────────────────────────────────────────────────
+applyColors();
+render();
+updatePageIndicator();
+loadPluginsForPage();
+renderSearchBar();
+</script>
+</body>
+</html>

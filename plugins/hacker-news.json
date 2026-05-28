@@ -1,0 +1,13 @@
+{
+  "name": "hacker news",
+  "source": {
+    "type": "rss",
+    "url": "https://hnrss.org/frontpage"
+  },
+  "map": {
+    "label": "title",
+    "url": "link"
+  },
+  "limit": 10,
+  "refreshMs": 900000
+}

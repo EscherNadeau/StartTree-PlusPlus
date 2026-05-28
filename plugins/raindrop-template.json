@@ -1,0 +1,20 @@
+{
+  "name": "raindrop",
+  "credentials": {
+    "RAINDROP_TOKEN": "Get yours at raindrop.io/settings/integrations → Create Test App → copy the test token"
+  },
+  "source": {
+    "type": "json",
+    "url": "https://api.raindrop.io/rest/v1/raindrops/0",
+    "headers": {
+      "Authorization": "Bearer {{RAINDROP_TOKEN}}"
+    }
+  },
+  "map": {
+    "array": "items",
+    "label": "title",
+    "url": "link"
+  },
+  "limit": 15,
+  "refreshMs": 3600000
+}
