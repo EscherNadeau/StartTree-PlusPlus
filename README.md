@@ -2,8 +2,19 @@
 
 A terminal-style browser start page with live feeds, a plugin system, and full in-browser editing. No build step, no framework, no config files to touch.
 
+## What it is
+
+HomeBase is a heavily expanded spiritual successor to [StartTree](https://github.com/Paul-Houser/StartTree) by Paul Houser. Where the original generates a static HTML file from a YAML config, HomeBase is a fully interactive app with two layers:
+
+- **`index.html`** — standalone start page. Drop it in your browser and it works. All config lives in `localStorage`. Nothing to install.
+- **`server.py`** — optional FastAPI backend (`localhost:6969`) that powers live feeds: Reddit, RSS, YouTube, weather, and Ollama AI summaries. Runs as a systemd user service.
+
+---
+
+## Screenshots
+
 ### Main dashboard
-The terminal-style `tree ~` layout — link trees grouped by category, with a DuckDuckGo search bar at the bottom. Everything is editable inline, no config files.
+The terminal-style `tree ~` layout — link trees grouped by category with a configurable search bar at the bottom. Supports DuckDuckGo, Google, Bing, Brave, Kagi, YouTube, or any custom engine. Everything is editable inline, no config files.
 
 ![Main dashboard](screenshots/MAINPAGE.png)
 
@@ -16,15 +27,6 @@ When a plugin needs an API key (like `tmdb_trending`), a modal prompts you to pa
 After installing the TMDB plugin, a `tmdb_trending/` tree appears on your dashboard with live movie data pulled from The Movie Database — watchlist items starred, trending titles listed below.
 
 ![TMDB trending plugin](screenshots/TMDB%20EXAMPLE.png)
-
----
-
-## What it is
-
-HomeBase is a heavily expanded spiritual successor to [StartTree](https://github.com/Paul-Houser/StartTree) by Paul Houser. Where the original generates a static HTML file from a YAML config, HomeBase is a fully interactive app with two layers:
-
-- **`index.html`** — standalone start page. Drop it in your browser and it works. All config lives in `localStorage`. Nothing to install.
-- **`server.py`** — optional FastAPI backend (`localhost:6969`) that powers live feeds: Reddit, RSS, YouTube, weather, and Ollama AI summaries. Runs as a systemd user service.
 
 ---
 
