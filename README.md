@@ -2,7 +2,20 @@
 
 A terminal-style browser start page with live feeds, a plugin system, and full in-browser editing. No build step, no framework, no config files to touch.
 
-![HomeBase screenshot](screenshot.png)
+### Main dashboard
+The terminal-style `tree ~` layout — link trees grouped by category, with a DuckDuckGo search bar at the bottom. Everything is editable inline, no config files.
+
+![Main dashboard](screenshots/MAINPAGE.png)
+
+### Plugin install — API credentials
+When a plugin needs an API key (like `tmdb_trending`), a modal prompts you to paste it in. Keys are stored locally and never leave your machine.
+
+![Plugin install dialog](screenshots/API%20SCREEN%20EXAMPLE.png)
+
+### Live plugin feed — TMDB trending
+After installing the TMDB plugin, a `tmdb_trending/` tree appears on your dashboard with live movie data pulled from The Movie Database — watchlist items starred, trending titles listed below.
+
+![TMDB trending plugin](screenshots/TMDB%20EXAMPLE.png)
 
 ---
 
